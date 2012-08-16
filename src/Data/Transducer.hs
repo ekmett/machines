@@ -1,5 +1,16 @@
-{-# LANGUAGE ConstraintKinds, Rank2Types, GADTs, FlexibleInstances #-}
+{-# LANGUAGE Rank2Types, GADTs, FlexibleInstances #-}
 {-# OPTIONS_GHC -Wall #-}
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Data.Transducer
+-- Copyright   :  (C) 2012 Edward Kmett, Runar Bjarnason, Paul Chiusano
+-- License     :  BSD-style (see the file LICENSE)
+--
+-- Maintainer  :  Edward Kmett <ekmett@gmail.com>
+-- Stability   :  provisional
+-- Portability :  portable
+--
+----------------------------------------------------------------------------
 module Data.Transducer
   (
   -- * A monad for stream transduction
@@ -33,10 +44,12 @@ module Data.Transducer
   , droppingWhile
   , takingWhile
   , buffered
+
   -- * Sources
   , Source
   , source
   , cap
+
   -- * Tees
   , Fork(..)
   , tee
@@ -49,7 +62,7 @@ module Data.Transducer
 import Control.Applicative
 import Control.Category
 import Control.Monad (ap, MonadPlus(..), replicateM_, when)
-import Data.Bifunctor
+-- import Data.Bifunctor
 import Data.Foldable
 import Prelude hiding ((.),id)
 
@@ -69,8 +82,8 @@ newtype SM k i o a = SM
 instance Functor (SM k i o) where
   fmap f (SM m) = SM $ \k -> m (k . f)
 
-instance Bifunctor (SM k i) where
-  bimap f g (SM m) = SM $ \kp ke -> m (kp . g) (ke . f)
+-- instance Bifunctor (SM k i) where
+--  bimap f g (SM m) = SM $ \kp ke -> m (kp . g) (ke . f)
 
 instance Applicative (SM k i o) where
   pure a = SM (\kp _ _ _ -> kp a)
@@ -115,6 +128,11 @@ data SF k i o
   | forall r. Receive (r -> SF k i o) (k i r) (SF k i o)
   | Stop
 
+instance Functor (SF k i) where
+  fmap f (Emit o xs) = Emit (f o) (fmap f xs)
+  fmap f (Receive k kir e) = Receive (fmap f . k) kir (fmap f e)
+  fmap _ Stop = Stop
+
 transform :: (forall a. k i a -> k' i' a) -> SF k i o -> SF k' i' o
 transform f (Emit o k)    = Emit o (transform f k)
 transform _ Stop          = Stop
@@ -135,6 +153,7 @@ repeatedly m = r where r = runSM m (const r) Emit (Receive id) Stop
 
 before :: SF k i o -> SM k i o a -> SF k i o
 before f m = runSM m (const f) Emit (Receive id) Stop
+
 
 instance Category (SF (->)) where
   id = repeatedly $ do
