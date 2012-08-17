@@ -20,6 +20,7 @@ module Data.Machine.Type
   , Machine
   , run
   , runMachine
+  , encased
 
   -- ** Building machines from plans
   , construct
@@ -73,6 +74,9 @@ type Machine k i o = forall m. Monad m => MachineT m k i o
 -- | @'runMachine' = 'runId' . 'runMachineT'@
 runMachine :: MachineT Id k i o -> Step k i o (MachineT Id k i o)
 runMachine = runId . runMachineT
+
+encased :: Monad m => Step k i o (MachineT m k i o) -> MachineT m k i o
+encased = MachineT . return
 
 instance Monad m => Functor (MachineT m k i) where
   fmap f (MachineT m) = MachineT (liftM f' m) where
@@ -169,14 +173,14 @@ instance Monad m => Category (MachineT m (->)) where
     Stop          -> return Stop
     Yield a as    -> return $ Yield a (as . n)
     Await f kir k -> runMachineT n >>= \u -> case u of
-      Stop          -> runMachineT (k . MachineT (return Stop))
+      Stop          -> runMachineT (k . stopped)
       Yield b bs    -> runMachineT (fmap f kir b . bs)
-      Await g kg fg -> let mv = MachineT (return v) in
+      Await g kg fg -> let mv = encased v in
         return (Await (\a -> mv . g a) kg (mv . fg))
 
 -- | This is a stopped 'Machine'
 stopped :: Machine k a b
-stopped = MachineT (return Stop)
+stopped = encased Stop
 
 -------------------------------------------------------------------------------
 -- Sink

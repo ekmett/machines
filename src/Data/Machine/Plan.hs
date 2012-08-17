@@ -95,7 +95,7 @@ instance Applicative (PlanT k i o m) where
 
 instance Alternative (PlanT k i o m) where
   empty = PlanT $ \_ _ _ kf -> kf
-  PlanT m <|> PlanT n = PlanT $ \kp ke kr kf -> m kp ke (\ks kir _ -> kr ks kir (n kp ke kr kf)) kf
+  PlanT m <|> PlanT n = PlanT $ \kp ke kr kf -> m kp ke (\ks kir _ -> kr ks kir (n kp ke kr kf)) (n kp ke kr kf)
 
 instance Monad (PlanT k i o m) where
   return a = PlanT (\kp _ _ _ -> kp a)
