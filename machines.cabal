@@ -4,14 +4,14 @@ version:       0.1
 license:       BSD3
 cabal-version: >= 1.8
 license-file:  LICENSE
-author:        Edward A. Kmett, Runar Bjarnason, Paul Chuisano
+author:        Edward A. Kmett, Rúnar Bjarnason
 maintainer:    Edward A. Kmett <ekmett@gmail.com>
 stability:     provisional
 homepage:      http://github.com/ekmett/machines/
 bug-reports:   http://github.com/ekmett/machines/issues
 copyright:     Copyright (C) 2012 Edward A. Kmett
-synopsis:      Networks of stream transducers
-description:   Networks of stream transducers
+synopsis:      Networked stream transducers
+description:   Networked stream transducers
 build-type:    Simple
 tested-with:   GHC == 7.4.1
 extra-source-files:
@@ -28,9 +28,18 @@ source-repository head
   location: git://github.com/ekmett/machines.git
 
 library
-  build-depends: base >= 4.3 && < 5
+  build-depends:
+    base         == 4.*,
+    transformers == 0.3.*
 
-  exposed-modules: Data.Machine
+  exposed-modules:
+    Data.Machine
+    Data.Machine.Mealy
+    Data.Machine.Moore
+    Data.Machine.Process
+    Data.Machine.Plan
+    Data.Machine.Tee
+    Data.Machine.Type
 
   other-extensions:
     FlexibleInstances

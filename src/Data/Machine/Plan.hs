@@ -1,14 +1,14 @@
-{-# LANGUAGE Rank2Types, GADTs, FlexibleInstances #-}
+{-# LANGUAGE Rank2Types, FlexibleInstances #-}
 {-# OPTIONS_GHC -Wall #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Plan
--- Copyright   :  (C) 2012 Edward Kmett, Runar Bjarnason, Paul Chiusano
+-- Copyright   :  (C) 2012 Edward Kmett, Rúnar Bjarnason
 -- License     :  BSD-style (see the file LICENSE)
 --
 -- Maintainer  :  Edward Kmett <ekmett@gmail.com>
 -- Stability   :  provisional
--- Portability :  portable
+-- Portability :  rank-2
 --
 ----------------------------------------------------------------------------
 module Data.Machine.Plan
@@ -29,6 +29,8 @@ module Data.Machine.Plan
 import Control.Applicative
 import Control.Category
 import Control.Monad (ap, MonadPlus(..))
+import Control.Monad.Trans.Class
+import Control.Monad.IO.Class
 import Data.Functor.Identity
 import Prelude hiding ((.),id)
 
@@ -36,18 +38,9 @@ import Prelude hiding ((.),id)
 -- Plans
 -------------------------------------------------------------------------------
 
--- | You can 'construct' a 'Plan', turning it into a 'Machine'
+-- | You can 'construct' a 'Plan' (or 'PlanT'), turning it into a
+-- 'Data.Machine.Type.Machine' (or 'Data.Machine.Type.MachineT')
 --
--- It is perhaps easier to think of 'Plan' in its un-cps'ed form, which would
--- look like:
---
--- @
--- data Plan k i o a
---   = Done a
---   | Yield o (Plan k i o a)
---   | Await (k i (Plan k i o a)) (Plan k i o a)
---   | Fail
--- @
 newtype PlanT k i o m a = PlanT
   { runPlanT :: forall r.
       (a -> m r) ->                 -- Done a
@@ -57,9 +50,25 @@ newtype PlanT k i o m a = PlanT
       m r
   }
 
-type Plan k i o = PlanT k i o Identity
+-- | A @'Plan' k i o a@ is a specification for a pure 'Machine', that reads inputs selected by @k@
+-- with types based on @i@, writes values of type @o@, and has intermediate results of type @a@.
+--
+-- A @'PlanT' k i o a@ can be used as a @'PlanT' k i o m a@ for any @'Monad' m@.
+--
+-- It is perhaps easier to think of 'Plan' in its un-cps'ed form, which would
+-- look like:
+--
+-- @
+-- data 'Plan' k i o a
+--   = Done a
+--   | Yield o (Plan k i o a)
+--   | Await (k i (Plan k i o a)) (Plan k i o a)
+--   | Fail
+-- @
+type Plan k i o a = forall m. PlanT k i o m a
 
-runPlan :: Functor (k i) => Plan k i o a -> (a -> r) -> (o -> r -> r) -> (k i r -> r -> r) -> r -> r
+-- | Deconstruct a 'Plan' without reference to a 'Monad'.
+runPlan :: Functor (k i) => PlanT k i o Identity a -> (a -> r) -> (o -> r -> r) -> (k i r -> r -> r) -> r -> r
 runPlan m ar orr kirrr z = runIdentity $ runPlanT m
   (Identity . ar)
   (\o (Identity r) -> Identity (orr o r))
@@ -86,14 +95,20 @@ instance MonadPlus (PlanT k i o m) where
   mzero = empty
   mplus = (<|>)
 
+instance MonadTrans (PlanT k i o) where
+  lift m = PlanT (\kp _ _ _ -> m >>= kp)
+
+instance MonadIO m => MonadIO (PlanT k i o m) where
+  liftIO m = PlanT (\kp _ _ _ -> liftIO m >>= kp)
+
 -- | Output a result.
-yield :: o -> PlanT k i o m ()
+yield :: o -> Plan k i o ()
 yield o = PlanT (\kp ke _ _ -> ke o (kp ()))
 
 -- | Wait for input.
 --
 -- @'await' = 'awaits' 'id'@
-await :: PlanT (->) i o m i
+await :: Plan (->) i o i
 await = PlanT (\kp _ kr kf -> kr kp kf)
 
 -- | Many combinators are parameterized on the choice of 'Handle',
@@ -116,9 +131,9 @@ type Fitting k k' o i = forall r. k o r -> k' i r
 -- awaits 'R'  :: 'Plan' 'Merge' (a,b) o b
 -- awaits 'id' :: 'Plan' (->) i o i
 -- @
-awaits :: Functor (k i) => Handle k i j -> PlanT k i o m j
+awaits :: Functor (k i) => Handle k i j -> Plan k i o j
 awaits f = PlanT $ \kp _ kr kf -> kr (fmap kp (f id)) kf
 
 -- | @'stop' = 'empty'@
-stop :: PlanT k i o m a
+stop :: Plan k i o a
 stop = empty
