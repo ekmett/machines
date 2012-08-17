@@ -17,13 +17,14 @@ module Data.Machine.Source
   , source
   , repeated
   , cycled
--- , cap
+  , cap
   ) where
 
 import Control.Category
 import Data.Foldable
 import Data.Machine.Plan
 import Data.Machine.Type
+import Data.Machine.Process
 import Prelude hiding ((.),id)
 
 -------------------------------------------------------------------------------
@@ -48,14 +49,13 @@ cycled xs = repeatedly (traverse_ yield xs)
 source :: Foldable f => f b -> Source b
 source xs = construct (traverse_ yield xs)
 
-{-
 -- |
--- You can fitting a 'Source' with a 'Process'.
+-- You can transform a 'Source' with a 'Process'.
 --
--- This is equivalent to capping the 'Process'.
+-- Alternately you can view this as capping the 'Source' end of a 'Process',
+-- yielding a new 'Source'.
 --
 -- @'cap' = 'pipe'@
 --
 cap :: Process a b -> Source a -> Source b
 cap l r = after r l
--}
