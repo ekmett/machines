@@ -42,10 +42,10 @@ instance Functor (Y i) where
   fmap f (Y k) = Y (f . k)
   fmap f (Z k) = Z (f . k)
 
--- | A 'Machine' that can read from two input stream in a deterministic manner.
+-- | A 'Machine' that can read from two input stream in a non-deterministic manner.
 type Wye a b c = Machine Y (Either a b) c
 
--- | A 'Machine' that can read from two input stream in a deterministic manner with monadic side-effects.
+-- | A 'Machine' that can read from two input stream in a non-deterministic manner with monadic side-effects.
 type WyeT m a b c = MachineT m Y (Either a b) c
 
 -- | Compose a pair of pipes onto the front of a 'Wye'.
