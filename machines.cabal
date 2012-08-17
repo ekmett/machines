@@ -30,6 +30,7 @@ source-repository head
 library
   build-depends:
     base         == 4.*,
+    comonad      == 3.0.*,
     transformers == 0.3.*,
     mtl          >= 2.1.1 && < 2.2
 

@@ -25,11 +25,11 @@ import Prelude hiding ((.),id)
 newtype Mealy a b = Mealy { runMealy :: a -> (b, Mealy a b) }
 
 instance Automaton Mealy where
-  auto = construct . loop where
-    loop (Mealy f) = await >>= \a -> case f a of
+  auto = construct . go where
+    go (Mealy f) = await >>= \a -> case f a of
       (b, m) -> do
          yield b
-         loop m
+         go m
 
 instance Category Mealy where
   id = Mealy (\a -> (a, id))
