@@ -1,7 +1,7 @@
 {-# LANGUAGE Rank2Types, GADTs, FlexibleInstances #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Data.Model
+-- Module      :  Data.Machine
 -- Copyright   :  (C) 2012 Edward Kmett, Runar Bjarnason, Paul Chiusano
 -- License     :  BSD-style (see the file LICENSE)
 --
@@ -10,10 +10,10 @@
 -- Portability :  portable
 --
 ----------------------------------------------------------------------------
-module Data.Model
+module Data.Machine
   (
-  -- * A monad for building stream transducers
-    Machine(..)
+  -- * Plans
+    Plan(..)
   , yield
   , await
   , Handle
@@ -21,15 +21,15 @@ module Data.Model
   , awaits
   , stop
 
-  -- * Stream Transducers
-  , Model(..)
-  , runModel
+  -- * Machines
+  , Machine(..)
+  , runMachine
   , evaluate
   , fitting
   , pass
 
   -- ** Compiling stream transducers
-  , compile
+  , construct
   , before
   , repeatedly
   , sink
@@ -61,7 +61,7 @@ module Data.Model
 
   -- * Tees
   , Tee
-  , Fork(..)
+  , Merge(..)
   , tee
   , addL, addR
   , capL, capR
@@ -74,12 +74,23 @@ import Data.Foldable
 import Prelude hiding ((.),id)
 
 -------------------------------------------------------------------------------
--- Machines
+-- Plans
 -------------------------------------------------------------------------------
 
--- | You can 'compile' a 'Machine' into a 'Model'
-newtype Machine k i o a = Machine
-  { runMachine :: forall r.
+-- | You can 'construct' a 'Plan', turning it into a 'Machine'
+--
+-- It is perhaps easier to think of 'Plan' in its un-cps'ed form, which would
+-- look like:
+--
+-- @
+-- data Plan k i o a
+--   = Done a
+--   | Yield o (Plan k i o a)
+--   | Await (k i (Plan k i o a)) (Plan k i o a)
+--   | Fail
+-- @
+newtype Plan k i o a = Plan
+  { runPlan :: forall r.
       (a -> r) ->           -- return
       (o -> r -> r) ->      -- yield
       (k i r -> r -> r) ->  -- await
@@ -87,42 +98,42 @@ newtype Machine k i o a = Machine
       r
   }
 
-instance Functor (Machine k i o) where
-  fmap f (Machine m) = Machine $ \k -> m (k . f)
+instance Functor (Plan k i o) where
+  fmap f (Plan m) = Plan $ \k -> m (k . f)
 
-instance Applicative (Machine k i o) where
-  pure a = Machine (\kp _ _ _ -> kp a)
+instance Applicative (Plan k i o) where
+  pure a = Plan (\kp _ _ _ -> kp a)
   (<*>) = ap
 
-instance Alternative (Machine k i o) where
-  empty = Machine $ \_ _ _ kf -> kf
-  Machine m <|> Machine n = Machine $ \kp ke kr kf -> m kp ke (\kir _ -> kr kir (n kp ke kr kf)) kf
+instance Alternative (Plan k i o) where
+  empty = Plan $ \_ _ _ kf -> kf
+  Plan m <|> Plan n = Plan $ \kp ke kr kf -> m kp ke (\kir _ -> kr kir (n kp ke kr kf)) kf
 
-instance Monad (Machine k i o) where
-  return a = Machine (\kp _ _ _ -> kp a)
-  Machine m >>= f = Machine (\kp ke kr kf -> m (\a -> runMachine (f a) kp ke kr kf) ke kr kf)
-  fail _ = Machine (\_ _ _ kf -> kf)
+instance Monad (Plan k i o) where
+  return a = Plan (\kp _ _ _ -> kp a)
+  Plan m >>= f = Plan (\kp ke kr kf -> m (\a -> runPlan (f a) kp ke kr kf) ke kr kf)
+  fail _ = Plan (\_ _ _ kf -> kf)
 
-instance MonadPlus (Machine k i o) where
+instance MonadPlus (Plan k i o) where
   mzero = empty
   mplus = (<|>)
 
 -- | Output a result.
-yield :: o -> Machine k i o ()
-yield o = Machine (\kp ke _ _ -> ke o (kp ()))
+yield :: o -> Plan k i o ()
+yield o = Plan (\kp ke _ _ -> ke o (kp ()))
 
 -- | Wait for input.
 --
 -- @'await' = 'awaits' 'id'@
-await :: Machine (->) i o i
-await = Machine (\kp _ kr kf -> kr kp kf)
+await :: Plan (->) i o i
+await = Plan (\kp _ kr kf -> kr kp kf)
 
 -- | Many combinators are parameterized on the choice of 'Handle',
 -- this acts like an input stream selector.
 --
 -- @
--- 'L' :: 'Handle' 'Fork' ('Either' a b) a
--- 'R' :: 'Handle' 'Fork' ('Either' a b) b
+-- 'L' :: 'Handle' 'Merge' (a,b) a
+-- 'R' :: 'Handle' 'Merge' (a,b) b
 -- @
 type Handle k i o = forall r. (o -> r) -> k i r
 
@@ -133,34 +144,34 @@ type Fitting k k' o i = forall r. k o r -> k' i r
 -- | Wait for a particular input.
 --
 -- @
--- awaits 'L' :: 'Machine' 'Fork' (a,b) o a
--- awaits 'R' :: 'Machine' 'Fork' (a,b) o b
--- awaits 'id' :: 'Machine' (->) i o i
+-- awaits 'L'  :: 'Plan' 'Merge' (a,b) o a
+-- awaits 'R'  :: 'Plan' 'Merge' (a,b) o b
+-- awaits 'id' :: 'Plan' (->) i o i
 -- @
-awaits :: Functor (k i) => Handle k i j -> Machine k i o j
-awaits f = Machine $ \kp _ kr kf -> kr (fmap kp (f id)) kf
+awaits :: Functor (k i) => Handle k i j -> Plan k i o j
+awaits f = Plan $ \kp _ kr kf -> kr (fmap kp (f id)) kf
 
 -- | @'stop' = 'empty'@
-stop :: Machine k i o a
+stop :: Plan k i o a
 stop = empty
 
 -- | Stop feeding input into model and extract an answer
-evaluate :: Model k a b -> [b]
+evaluate :: Machine k a b -> [b]
 evaluate Stop          = []
 evaluate (Yield o k)   = o : evaluate k
 evaluate (Await _ _ f) = evaluate f
 
 -------------------------------------------------------------------------------
--- Transduction Models
+-- Transduction Machines
 -------------------------------------------------------------------------------
 
--- | A model reads from a number of inputs and yields results.
-data Model k i o
-  = Yield o (Model k i o)
-  | forall r. Await (r -> Model k i o) (k i r) (Model k i o)
+-- | A 'Machine' reads from a number of inputs and may yield results before stopping.
+data Machine k i o
+  = Yield o (Machine k i o)
+  | forall r. Await (r -> Machine k i o) (k i r) (Machine k i o)
   | Stop
 
-instance Functor (Model k i) where
+instance Functor (Machine k i) where
   fmap f (Yield o xs) = Yield (f o) (fmap f xs)
   fmap f (Await k kir e) = Await (fmap f . k) kir (fmap f e)
   fmap _ Stop = Stop
@@ -175,33 +186,33 @@ instance Functor (Model k i) where
 -- 'fitting' 'R' :: 'Process' b c -> 'Tee' a b c
 -- 'fitting' 'id' :: 'Process' a b -> 'Process' a b
 -- @
-fitting :: (forall a. k i a -> k' i' a) -> Model k i o -> Model k' i' o
+fitting :: (forall a. k i a -> k' i' a) -> Machine k i o -> Machine k' i' o
 fitting f (Yield o k)     = Yield o (fitting f k)
 fitting _ Stop            = Stop
 fitting f (Await g kir h) = Await (fitting f . g) (f kir) (fitting f h)
 
-runModel :: Functor (k i) => Model k i o -> (o -> r -> r) -> (k i r -> r -> r) -> r -> r
-runModel m ke kr kf  = go m where
+runMachine :: Functor (k i) => Machine k i o -> (o -> r -> r) -> (k i r -> r -> r) -> r -> r
+runMachine m ke kr kf  = go m where
   go (Yield o k)     = ke o (go k)
   go (Await f kir r) = kr (fmap (go . f) kir) (go r)
   go Stop            = kf
-{-# INLINE runModel #-}
+{-# INLINE runMachine #-}
 
 -- | Compile a machine to a model.
-compile :: Machine k i o a -> Model k i o
-compile m = runMachine m (const Stop) Yield (Await id) Stop
+construct :: Plan k i o a -> Machine k i o
+construct m = runPlan m (const Stop) Yield (Await id) Stop
 
 -- | Generates a model that runs a machine until it stops, then start it up again.
 --
--- @'repeatedly' m = 'compile' ('forever' m)@
-repeatedly :: Machine k i o a -> Model k i o
-repeatedly m = r where r = runMachine m (const r) Yield (Await id) Stop
+-- @'repeatedly' m = 'construct' ('forever' m)@
+repeatedly :: Plan k i o a -> Machine k i o
+repeatedly m = r where r = runPlan m (const r) Yield (Await id) Stop
 
 -- | Evaluate a machine until it stops, and then yield answers according to the supplied model.
-before :: Model k i o -> Machine k i o a -> Model k i o
-before f m = runMachine m (const f) Yield (Await id) Stop
+before :: Machine k i o -> Plan k i o a -> Machine k i o
+before f m = runPlan m (const f) Yield (Await id) Stop
 
-instance Category (Model (->)) where
+instance Category (Machine (->)) where
   id = Await (`Yield` id) id Stop
   Stop          . _              = Stop
   Yield a as    . sf             = Yield a (as . sf)
@@ -217,14 +228,13 @@ instance Automaton (->) where
     i <- await
     yield (f i)
 
-
-type Process = Model (->)
+type Process = Machine (->)
 
 -- | 'Mealy' machines
 newtype Mealy a b = Mealy { runMealy :: a -> (b, Mealy a b) }
 
 instance Automaton Mealy where
-  auto = compile . loop where
+  auto = construct . loop where
     loop (Mealy f) = await >>= \a -> case f a of
       (b, m) -> do
          yield b
@@ -234,7 +244,7 @@ instance Automaton Mealy where
 data Moore a b = Moore b (a -> Moore a b)
 
 instance Automaton Moore where
-  auto = compile . loop where
+  auto = construct . loop where
     loop (Moore b f) = do
       yield b
       await >>= loop . f
@@ -253,7 +263,7 @@ dropping n = before id $ replicateM_ n await
 
 -- | A process that passes through the first @n@ elements from its input then stops
 taking :: Int -> Process a a
-taking n = compile . replicateM_ n $ await >>= yield
+taking n = construct . replicateM_ n $ await >>= yield
 
 -- | A process that passes through elements until a predicate ceases to hold, then stops
 takingWhile :: (a -> Bool) -> Process a a
@@ -265,8 +275,8 @@ droppingWhile p = before id loop where
   loop = await >>= \v -> if p v then loop else yield v
 
 {-
--- | Bolt a 'Process' on the end of any 'Model'.
-pipe :: Process b c -> Model k a b -> Model k a c
+-- | Bolt a 'Process' on the end of any 'Machine'.
+pipe :: Process b c -> Machine k a b -> Machine k a c
 pipe Stop            _                = Stop
 pipe (Yield a as)    sf               = Yield a (pipe as sf)
 pipe (Await f kir _) (Yield b bs)     = pipe (fmap f kir b) bs
@@ -274,7 +284,7 @@ pipe (Await _ _ g)   Stop             = pipe g Stop
 pipe sf              (Await g kir fg) = Await (fmap (pipe sf) g) kir (pipe sf fg)
 -}
 
-after :: Model k a b -> Process b c -> Model k a c
+after :: Machine k a b -> Process b c -> Machine k a c
 after _ Stop                            = Stop
 after sf (Yield a as)    = Yield a (after sf as)
 after (Yield b bs) (Await f kir _)  = after bs (fmap f kir b)
@@ -304,7 +314,7 @@ supply xs     (Yield o k)    = Yield o (supply xs k)
 -- 'pass' 'L' :: 'Tee' a b a
 -- 'pass' 'R' :: 'Tee' a b b
 -- @
-pass :: Functor (k i) => Handle k i o -> Model k i o
+pass :: Functor (k i) => Handle k i o -> Machine k i o
 pass input = repeatedly $ do
   a <- awaits input
   yield a
@@ -314,7 +324,7 @@ pass input = repeatedly $ do
 -------------------------------------------------------------------------------
 
 -- | A 'Source' never reads from its input.
-type Source b = forall k a. Model k a b
+type Source b = forall k a. Machine k a b
 
 -- | Repeat the same value, over and over.
 repeated :: o -> Source o
@@ -326,7 +336,7 @@ cycled xs = repeatedly (traverse_ yield xs)
 
 -- | Generate a 'Source' from any 'Foldable' container.
 source :: Foldable f => f b -> Source b
-source xs = compile (traverse_ yield xs)
+source xs = construct (traverse_ yield xs)
 
 -- |
 -- You can fitting a 'Source' with a 'Process'.
@@ -346,22 +356,22 @@ cap l r = after r l
 -- A 'Sink' in this model is a 'Process' (or 'Tee', etc) that produces a single answer.
 --
 -- \"Is that your final answer?\"
-sink :: (forall o. Machine k i o a) -> Model k i a
-sink m = runMachine m (\a -> Yield a Stop) id (Await id) Stop
+sink :: (forall o. Plan k i o a) -> Machine k i a
+sink m = runPlan m (\a -> Yield a Stop) id (Await id) Stop
 
 -------------------------------------------------------------------------------
 -- Tees
 -------------------------------------------------------------------------------
 
-data Fork i c where
-  L :: (a -> c) -> Fork (Either a b) c
-  R :: (b -> c) -> Fork (Either a b) c
+data Merge i c where
+  L :: (a -> c) -> Merge (a, b) c
+  R :: (b -> c) -> Merge (a, b) c
 
-instance Functor (Fork i) where
+instance Functor (Merge i) where
   fmap f (L k) = L (f . k)
   fmap f (R k) = R (f . k)
 
-type Tee a b = Model Fork (Either a b)
+type Tee a b = Machine Merge (a, b)
 
 -- | Compose a pair of pipes onto the front of a Tee.
 tee :: Process a a' -> Process b b' -> Tee a' b' c -> Tee a b c
@@ -403,7 +413,7 @@ capR :: Source b -> Tee a b c -> Process a c
 capR s t = fitting capped (addR s t)
 
 -- | Natural transformation used by 'capL' and 'capR'.
-capped :: Fork (Either a a) b -> a -> b
+capped :: Merge (a, a) b -> a -> b
 capped (R r) = r
 capped (L r) = r
 
@@ -414,7 +424,7 @@ class Handled k where
 instance Handled (->) where
   handleMatches _ _ = True
 
-instance Handled Fork where
+instance Handled Merge where
   handleMatches h L{} = case h id of L{} -> True; _ -> False
   handleMatches h R{} = case h id of R{} -> True; _ -> False
 -}
