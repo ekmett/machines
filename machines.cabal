@@ -45,9 +45,9 @@ library
     Data.Machine.Plan
     Data.Machine.Tee
     Data.Machine.Type
+    Data.Machine.Wye
 
-
---     Data.Machine.Wye
+  default-language: Haskell2010
   other-extensions:
     FlexibleInstances
     GADTs

@@ -17,8 +17,8 @@ module Data.Machine.Wye
     Wye, WyeT
   , Y(..)
   , wye
-  , addX, addY, addZ
-  -- , capX, capY, capZ
+  , addX, addY
+  , capX, capY
   ) where
 
 import Control.Category
@@ -48,42 +48,41 @@ type Wye a b c = Machine Y (Either a b) c
 -- | A 'Machine' that can read from two input stream in a deterministic manner with monadic side-effects.
 type WyeT m a b c = MachineT m Y (Either a b) c
 
--- | Compose a pair of pipes onto the front of a Wye.
+-- | Compose a pair of pipes onto the front of a 'Wye'.
+
+-- | Precompose a 'Process' onto each input of a 'Wye' (or 'WyeT').
+--
+-- This is left biased in that it tries to draw values from the 'X' input whenever they are
+-- available, and only draws from the 'Y' input when 'X' would block.
 wye :: Monad m => ProcessT m a a' -> ProcessT m b b' -> WyeT m a' b' c -> WyeT m a b c
 wye ma mb m = MachineT $ runMachineT m >>= \v -> case v of
-  Stop                -> return Stop
   Yield o k           -> return $ Yield o (wye ma mb k)
+  Stop                -> return Stop
   Await f (X kf) ff   -> runMachineT ma >>= \u -> case u of
+    Yield a k           -> runMachineT . wye k mb . f $ kf a
     Stop                -> runMachineT $ wye stopped mb ff
-    Yield a k           -> runMachineT $ wye k mb (fmap f kf a)
-    Await g kg fg
-      | mv <- encased v ->
-      return $ Await id (X (\a -> wye (fmap g kg a) mb mv)) (wye fg mb mv)
+    Await g kg fg       -> return . Await id (X $ \a -> wye (g $ kg a) mb $ encased v)
+                                  . wye fg mb $ encased v
   Await f (Y kf) ff   -> runMachineT mb >>= \u -> case u of
+    Yield b k           -> runMachineT . wye ma k . f $ kf b
     Stop                -> runMachineT $ wye ma stopped ff
-    Yield b k           -> runMachineT $ wye ma k (fmap f kf b)
-    Await g kg fg
-      | mv <- encased v ->
-      return $ Await id (Y (\b -> wye ma (fmap g kg b) mv)) (wye ma fg mv)
+    Await g kg fg       -> return . Await id (Y $ \b -> wye ma (g $ kg b) $ encased v)
+                                  . wye ma fg $ encased v
   Await f (Z kf) ff   -> runMachineT ma >>= \u -> case u of
+    Yield a k           -> runMachineT . wye k mb . f . kf $ Left a
     Stop                -> runMachineT mb >>= \w -> case w of
+      Yield b k           -> runMachineT . wye stopped k . f . kf $ Right b
       Stop                -> runMachineT $ wye stopped stopped ff
-      Yield b k           -> runMachineT $ wye stopped k (fmap (f . Right) kf b)
-      Await g kg fg
-        | mv <- encased v -> return $ Await id (Y (\b -> wye stopped (fmap g kg b) mv)) (wye stopped fg mv)
-    Yield a k           -> runMachineT $ wye k mb (fmap f kf a)
+      Await g kg fg       -> return . Await id (Y $ \b -> wye stopped (g $ kg b) $ encased v)
+                                    . wye stopped fg $ encased v
     Await g kg fg       -> runMachineT mb >>= \w -> case w of
-      Stop
-        | mv <- encased v -> return $ Await id (X (\a -> wye (fmap g kg a) stopped mv)) (wye fg stopped mv)
-      Yield b k           -> runMachineT $ wye (encased u) k (fmap (f . Right) kf b)
-      Await h kh fh
-        | mv <- encased v ->
-        return $ Await
-          id
-          (Z (\c -> case c of
-            Left a  -> wye (fmap g kg a) (encased w) mv
-            Right b -> wye (encased u) (fmap h kh b) mv))
-          (wye fg fh mv)
+      Yield b k           -> runMachineT . wye (encased u) k . f . kf $ Right b
+      Stop                -> return . Await id (X $ \a -> wye (g $ kg a) stopped $ encased v)
+                                    . wye fg stopped $ encased v
+      Await h kh fh       -> return . Await id (Z $ \c -> case c of
+                                                  Left a  -> wye (g $ kg a) (encased w) $ encased v
+                                                  Right b -> wye (encased u) (h $ kh b) $ encased v)
+                                    . wye fg fh $ encased v
 
 -- | Precompose a pipe onto the left input of a wye.
 addX :: Monad m => ProcessT m a b -> WyeT m b c d -> WyeT m a c d
@@ -93,23 +92,22 @@ addX p = wye p id
 addY :: Monad m => ProcessT m b c -> WyeT m a c d -> WyeT m a b d
 addY = wye id
 
-addZ :: Monad m => ProcessT m a b -> WyeT m b b c -> WyeT m a a c
-addZ p = wye p p
-
-{-
 -- | Tie off one input of a tee by connecting it to a known source.
-capL :: Monad m => SourceT m a -> WyeT m a b c -> ProcessT m b c
-capL s t = fitting capped (addL s t)
+capX :: Monad m => SourceT m a -> WyeT m a b c -> ProcessT m b c
+capX s t = fitting cappedX (addX s t)
 
 -- | Tie off one input of a tee by connecting it to a known source.
-capR :: Monad m => SourceT m b -> WyeT m a b c -> ProcessT m a c
-capR s t = fitting capped (addR s t)
+capY :: Monad m => SourceT m b -> WyeT m a b c -> ProcessT m a c
+capY s t = fitting cappedY (addY s t)
 
--- | Natural transformation used by 'capL' and 'capR'.
-capped :: Merge (Either a a) b -> a -> b
-capped (X r) = r
-capped (Y r) = r
-capped (Z r) = \a -> case a of
-  Left i ->
+-- | Natural transformation used by 'capY'
+cappedX :: Y (Either a a) b -> a -> b
+cappedX (X r) = r
+cappedX (Y r) = r
+cappedX (Z r) = r . Right
 
--}
+-- | Natural transformation used by 'capX'
+cappedY :: Y (Either a a) b -> a -> b
+cappedY (X r) = r
+cappedY (Y r) = r
+cappedY (Z r) = r . Left
