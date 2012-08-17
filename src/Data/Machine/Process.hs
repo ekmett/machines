@@ -101,9 +101,9 @@ buffered = repeatedly . go [] where
 -- | Build a new 'Machine' by adding a 'Process' to the output of an old 'Machine'
 --
 -- @
--- after :: Process a b   -> Process b c -> Process a c
--- after :: Tee a b c     -> Process c d -> Tee a b d
--- after :: Machine k a b -> Process b c -> Machine k a c
+-- after :: 'Process' a b   -> 'Process' b c -> 'Process' a c
+-- after :: 'Data.Machine.Tee.Tee' a b c     -> 'Process' c d -> 'Data.Machine.Tee.Tee' a b d
+-- after :: 'Machine' k a b -> 'Process' b c -> 'Machine' k a c
 -- @
 after :: Monad m => MachineT m k a b -> ProcessT m b c -> MachineT m k a c
 after ma mp = MachineT $ runMachineT mp >>= \v -> case v of

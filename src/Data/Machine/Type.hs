@@ -19,6 +19,7 @@ module Data.Machine.Type
   , Step(..)
   , Machine
   , run
+  , runMachine
 
   -- ** Building machines from plans
   , construct
@@ -36,8 +37,11 @@ module Data.Machine.Type
 import Control.Applicative
 import Control.Category
 import Control.Monad (liftM)
+import Data.Foldable
 import Data.Functor.Identity
 import Data.Machine.Plan
+import Data.Monoid
+import Data.Profunctor
 import Prelude hiding ((.),id)
 
 -------------------------------------------------------------------------------
@@ -52,6 +56,11 @@ data Step k i o r
   | Yield o r
   | forall t. Await (t -> r) (k i t) r
 
+instance Functor (Step k i o) where
+  fmap _ Stop = Stop
+  fmap f (Yield o k) = Yield o (f k)
+  fmap f (Await g kg fg) = Await (f . g) kg (f fg)
+
 -- | A 'MachineT' reads from a number of inputs and may yield results before stopping
 -- with monadic side-effects.
 newtype MachineT m k i o = MachineT { runMachineT :: m (Step k i o (MachineT m k i o)) }
@@ -61,10 +70,21 @@ newtype MachineT m k i o = MachineT { runMachineT :: m (Step k i o (MachineT m k
 -- A 'Machine' can be used as a @'MachineT' m@ for any @'Monad' m@.
 type Machine k i o = forall m. Monad m => MachineT m k i o
 
+-- | @'runMachine' = 'runIdentity' . 'runMachineT'@
+runMachine :: MachineT Identity k i o -> Step k i o (MachineT Identity k i o)
+runMachine = runIdentity . runMachineT
+
 instance Monad m => Functor (MachineT m k i) where
   fmap f (MachineT m) = MachineT (liftM f' m) where
     f' (Yield o xs)    = Yield (f o) (f <$> xs)
     f' (Await k kir e) = Await (fmap f . k) kir (f <$> e)
+    f' Stop            = Stop
+
+instance (Monad m, Profunctor k) => Profunctor (MachineT m k) where
+  rmap = fmap
+  lmap f (MachineT m) = MachineT (liftM f' m) where
+    f' (Yield o xs)    = Yield o (lmap f xs)
+    f' (Await k kir e) = Await (lmap f . k) (lmap f kir) (lmap f e)
     f' Stop            = Stop
 
 -- | Stop feeding input into model and extract an answer
@@ -77,6 +97,13 @@ runT (MachineT m) = m >>= \v -> case v of
 -- | Run a pure machine and extract an answer.
 run :: MachineT Identity k a b -> [b]
 run = runIdentity . runT
+
+-- | This permits toList to be used on a Machine.
+instance Foldable (MachineT Identity k i) where
+  foldMap f m = case runMachine m of
+    Stop -> mempty
+    Yield o k -> f o `mappend` foldMap f k
+    Await _ _ fg -> foldMap f fg
 
 -- |
 -- Connect different kinds of machines.

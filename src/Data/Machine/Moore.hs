@@ -19,6 +19,7 @@ import Control.Comonad
 import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
+import Data.Profunctor
 
 -- | 'Moore' machines
 data Moore a b = Moore b (a -> Moore a b)
@@ -31,6 +32,10 @@ instance Automaton Moore where
 
 instance Functor (Moore a) where
   fmap f (Moore b g) = Moore (f b) (fmap f . g)
+
+instance Profunctor Moore where
+  rmap = fmap
+  lmap f (Moore b g) = Moore b (lmap f . g . f)
 
 instance Applicative (Moore a) where
   pure a = r where r = Moore a (const r)
