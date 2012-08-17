@@ -1,7 +1,7 @@
-transducers
-===========
+machines
+========
 
-[![Build Status](https://secure.travis-ci.org/ekmett/transducers.png?branch=master)](http://travis-ci.org/ekmett/transducers)
+[![Build Status](https://secure.travis-ci.org/ekmett/machines.png?branch=master)](http://travis-ci.org/ekmett/machines)
 
 Contact Information
 -------------------
