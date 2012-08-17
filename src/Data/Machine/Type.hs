@@ -38,7 +38,7 @@ import Control.Applicative
 import Control.Category
 import Control.Monad (liftM)
 import Data.Foldable
-import Data.Functor.Identity
+import Data.Machine.Id
 import Data.Machine.Plan
 import Data.Monoid
 import Data.Profunctor
@@ -70,9 +70,9 @@ newtype MachineT m k i o = MachineT { runMachineT :: m (Step k i o (MachineT m k
 -- A 'Machine' can be used as a @'MachineT' m@ for any @'Monad' m@.
 type Machine k i o = forall m. Monad m => MachineT m k i o
 
--- | @'runMachine' = 'runIdentity' . 'runMachineT'@
-runMachine :: MachineT Identity k i o -> Step k i o (MachineT Identity k i o)
-runMachine = runIdentity . runMachineT
+-- | @'runMachine' = 'runId' . 'runMachineT'@
+runMachine :: MachineT Id k i o -> Step k i o (MachineT Id k i o)
+runMachine = runId . runMachineT
 
 instance Monad m => Functor (MachineT m k i) where
   fmap f (MachineT m) = MachineT (liftM f' m) where
@@ -95,15 +95,15 @@ runT (MachineT m) = m >>= \v -> case v of
   Await _ _ e -> runT e
 
 -- | Run a pure machine and extract an answer.
-run :: MachineT Identity k a b -> [b]
-run = runIdentity . runT
+run :: MachineT Id k a b -> [b]
+run = runId . runT
 
 -- | This permits toList to be used on a Machine.
-instance Foldable (MachineT Identity k i) where
-  foldMap f m = case runMachine m of
-    Stop -> mempty
-    Yield o k -> f o `mappend` foldMap f k
-    Await _ _ fg -> foldMap f fg
+instance Foldable m => Foldable (MachineT m k i) where
+  foldMap f (MachineT m) = foldMap go m where
+    go Stop = mempty
+    go (Yield o k) = f o `mappend` foldMap f k
+    go (Await _ _ fg) = foldMap f fg
 
 -- |
 -- Connect different kinds of machines.

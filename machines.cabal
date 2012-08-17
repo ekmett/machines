@@ -37,6 +37,7 @@ library
 
   exposed-modules:
     Data.Machine
+    Data.Machine.Id
     Data.Machine.Mealy
     Data.Machine.Moore
     Data.Machine.Process

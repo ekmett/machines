@@ -33,18 +33,18 @@ import Prelude hiding ((.),id)
 
 -- | The input descriptor for a 'Tee' or 'TeeT'
 data Merge i c where
-  L :: (a -> c) -> Merge (a, b) c
-  R :: (b -> c) -> Merge (a, b) c
+  L :: (a -> c) -> Merge (Either a b) c
+  R :: (b -> c) -> Merge (Either a b) c
 
 instance Functor (Merge i) where
   fmap f (L k) = L (f . k)
   fmap f (R k) = R (f . k)
 
 -- | A 'Machine' that can read from two input stream in a deterministic manner.
-type Tee a b c = Machine Merge (a, b) c
+type Tee a b c = Machine Merge (Either a b) c
 
 -- | A 'Machine' that can read from two input stream in a deterministic manner with monadic side-effects.
-type TeeT m a b c = MachineT m Merge (a,b) c
+type TeeT m a b c = MachineT m Merge (Either a b) c
 
 -- | Compose a pair of pipes onto the front of a Tee.
 tee :: Monad m => ProcessT m a a' -> ProcessT m b b' -> TeeT m a' b' c -> TeeT m a b c
@@ -79,7 +79,7 @@ capR :: Monad m => SourceT m b -> TeeT m a b c -> ProcessT m a c
 capR s t = fitting capped (addR s t)
 
 -- | Natural transformation used by 'capL' and 'capR'.
-capped :: Merge (a, a) b -> a -> b
+capped :: Merge (Either a a) b -> a -> b
 capped (R r) = r
 capped (L r) = r
 

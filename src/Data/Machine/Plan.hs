@@ -36,7 +36,7 @@ import Control.Monad.IO.Class
 import Control.Monad.State.Class
 import Control.Monad.Reader.Class
 import Control.Monad.Error.Class
-import Data.Functor.Identity
+import Data.Machine.Id
 import Prelude hiding ((.),id)
 
 -------------------------------------------------------------------------------
@@ -74,17 +74,17 @@ newtype PlanT k i o m a = PlanT
 type Plan k i o a = forall m. PlanT k i o m a
 
 -- | Deconstruct a 'Plan' without reference to a 'Monad'.
-runPlan :: PlanT k i o Identity a
+runPlan :: PlanT k i o Id a
         -> (a -> r)
         -> (o -> r -> r)
         -> (forall z. (z -> r) -> k i z -> r -> r)
         -> r
         -> r
-runPlan m kp ke kr kf = runIdentity $ runPlanT m
-  (Identity . kp)
-  (\o (Identity r) -> Identity (ke o r))
-  (\f k (Identity r) -> Identity (kr (runIdentity . f) k r))
-  (Identity kf)
+runPlan m kp ke kr kf = runId $ runPlanT m
+  (Id . kp)
+  (\o (Id r) -> Id (ke o r))
+  (\f k (Id r) -> Id (kr (runId . f) k r))
+  (Id kf)
 
 instance Functor (PlanT k i o m) where
   fmap f (PlanT m) = PlanT $ \k -> m (k . f)
