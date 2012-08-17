@@ -18,7 +18,7 @@ module Data.Machine.Process
   , Automaton(..)
   -- ** Common Processes
 --  , after
---  , supply
+  , supply
 --  , pipe
   , prepended
   , filtered
@@ -113,11 +113,12 @@ after sf (Yield a as)    = Yield a (after sf as)
 after (Yield b bs) (Await f kir _)  = after bs (fmap f kir b)
 after Stop (Await _ _ g)   = after Stop g
 after (Await g kir fg) sf = Await (fmap (`after` sf) g) kir (after fg sf)
+-}
 
 -- | Feed a 'Process' some input.
-supply :: [a] -> Process a b -> Process a b
-supply []     r             = r
-supply _      Stop          = Stop
-supply (x:xs) (Await f kir _) = supply xs (fmap f kir x)
-supply xs     (Yield o k)    = Yield o (supply xs k)
--}
+supply :: Monad m => [a] -> ProcessT m a b -> ProcessT m a b
+supply []         m = m
+supply xxs@(x:xs) m = MachineT $ runMachineT m >>= \v -> case v of
+  Stop -> return Stop
+  Await f kir _ -> runMachineT $ supply xs (fmap f kir x)
+  Yield o k -> return $ Yield o (supply xxs k)
