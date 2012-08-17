@@ -1,6 +1,6 @@
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 -----------------------------------------------------------------------------
 -- |
@@ -44,14 +44,14 @@ import Prelude hiding ((.),id)
 -------------------------------------------------------------------------------
 
 -- | You can 'construct' a 'Plan' (or 'PlanT'), turning it into a
--- 'Data.Machine.Type.Machine' (or 'Data.Machine.Type.MachineT')
+-- 'Data.Machine.Type.Machine' (or 'Data.Machine.Type.MachineT').
 --
 newtype PlanT k i o m a = PlanT
   { runPlanT :: forall r.
-      (a -> m r) ->                 -- Done a
-      (o -> m r -> m r) ->          -- Yield o (Plan k i o a)
-      (k i (m r) -> m r -> m r) ->  -- Await (k i (Plan k i o a)) (Plan k i o a)
-      m r ->                        -- Fail
+      (a -> m r) ->                                     -- Done a
+      (o -> m r -> m r) ->                              -- Yield o (Plan k i o a)
+      (forall z. (z -> m r) -> k i z -> m r -> m r) ->  -- forall z. Await (z -> Plan i o a) (k i z) (Plan k i o a)
+      m r ->                                            -- Fail
       m r
   }
 
@@ -68,18 +68,23 @@ newtype PlanT k i o m a = PlanT
 -- data 'Plan' k i o a
 --   = Done a
 --   | Yield o (Plan k i o a)
---   | Await (k i (Plan k i o a)) (Plan k i o a)
+--   | forall z. Await (z -> Plan k i o a) (k i z) (Plan k i o a)
 --   | Fail
 -- @
 type Plan k i o a = forall m. PlanT k i o m a
 
 -- | Deconstruct a 'Plan' without reference to a 'Monad'.
-runPlan :: Functor (k i) => PlanT k i o Identity a -> (a -> r) -> (o -> r -> r) -> (k i r -> r -> r) -> r -> r
-runPlan m ar orr kirrr z = runIdentity $ runPlanT m
-  (Identity . ar)
-  (\o (Identity r) -> Identity (orr o r))
-  (\kimr (Identity r) -> Identity (kirrr (runIdentity <$> kimr) r))
-  (Identity z)
+runPlan :: PlanT k i o Identity a
+        -> (a -> r)
+        -> (o -> r -> r)
+        -> (forall z. (z -> r) -> k i z -> r -> r)
+        -> r
+        -> r
+runPlan m kp ke kr kf = runIdentity $ runPlanT m
+  (Identity . kp)
+  (\o (Identity r) -> Identity (ke o r))
+  (\f k (Identity r) -> Identity (kr (runIdentity . f) k r))
+  (Identity kf)
 
 instance Functor (PlanT k i o m) where
   fmap f (PlanT m) = PlanT $ \k -> m (k . f)
@@ -90,7 +95,7 @@ instance Applicative (PlanT k i o m) where
 
 instance Alternative (PlanT k i o m) where
   empty = PlanT $ \_ _ _ kf -> kf
-  PlanT m <|> PlanT n = PlanT $ \kp ke kr kf -> m kp ke (\kir _ -> kr kir (n kp ke kr kf)) kf
+  PlanT m <|> PlanT n = PlanT $ \kp ke kr kf -> m kp ke (\ks kir _ -> kr ks kir (n kp ke kr kf)) kf
 
 instance Monad (PlanT k i o m) where
   return a = PlanT (\kp _ _ _ -> kp a)
@@ -129,7 +134,7 @@ yield o = PlanT (\kp ke _ _ -> ke o (kp ()))
 --
 -- @'await' = 'awaits' 'id'@
 await :: Plan (->) i o i
-await = PlanT (\kp _ kr kf -> kr kp kf)
+await = PlanT (\kp _ kr kf -> kr kp id kf)
 
 -- | Many combinators are parameterized on the choice of 'Handle',
 -- this acts like an input stream selector.
@@ -151,9 +156,11 @@ type Fitting k k' o i = forall r. k o r -> k' i r
 -- awaits 'R'  :: 'Plan' 'Merge' (a,b) o b
 -- awaits 'id' :: 'Plan' (->) i o i
 -- @
-awaits :: Functor (k i) => Handle k i j -> Plan k i o j
-awaits f = PlanT $ \kp _ kr kf -> kr (fmap kp (f id)) kf
+awaits :: Handle k i j -> Plan k i o j
+awaits f = PlanT $ \kp _ kr -> kr kp (f id)
 
 -- | @'stop' = 'empty'@
 stop :: Plan k i o a
 stop = empty
+
+

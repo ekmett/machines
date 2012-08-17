@@ -99,7 +99,7 @@ construct :: Monad m => PlanT k i o m a -> MachineT m k i o
 construct m = MachineT $ runPlanT m
   (const (return Stop))
   (\o k -> return (Yield o (MachineT k)))
-  (\k g  -> return (Await MachineT k (MachineT g)))
+  (\f k g -> return (Await (MachineT . f) k (MachineT g)))
   (return Stop)
 
 -- | Generates a model that runs a machine until it stops, then start it up again.
@@ -110,7 +110,7 @@ repeatedly m = r where
   r = MachineT $ runPlanT m
     (const (runMachineT r))
     (\o k -> return (Yield o (MachineT k)))
-    (\k g -> return (Await MachineT k (MachineT g)))
+    (\f k g -> return (Await (MachineT . f) k (MachineT g)))
     (return Stop)
 
 -- | Evaluate a machine until it stops, and then yield answers according to the supplied model.
@@ -118,7 +118,7 @@ before :: Monad m => MachineT m k i o -> PlanT k i o m a -> MachineT m k i o
 before (MachineT n) m = MachineT $ runPlanT m
   (const n)
   (\o k -> return (Yield o (MachineT k)))
-  (\k g -> return (Await MachineT k (MachineT g)))
+  (\f k g -> return (Await (MachineT . f) k (MachineT g)))
   (return Stop)
 
 -- | Given a handle, ignore all other inputs and just stream input from that handle.
