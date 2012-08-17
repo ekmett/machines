@@ -8,6 +8,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
+-- <http://en.wikipedia.org/wiki/Moore_machine>
 ----------------------------------------------------------------------------
 module Data.Machine.Moore
   ( Moore(..)

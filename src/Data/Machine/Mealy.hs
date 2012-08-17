@@ -8,6 +8,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
+-- <http://en.wikipedia.org/wiki/Mealy_machine>
 ----------------------------------------------------------------------------
 module Data.Machine.Mealy
   ( Mealy(..)
