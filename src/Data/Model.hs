@@ -1,5 +1,4 @@
 {-# LANGUAGE Rank2Types, GADTs, FlexibleInstances #-}
-{-# OPTIONS_GHC -Wall #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Model
@@ -25,11 +24,9 @@ module Data.Model
   -- * Stream Transducers
   , Model(..)
   , runModel
-  , repeated
   , shutdown
   , fitting
   , pass
-
 
   -- ** Compiling stream transducers
   , compile
@@ -40,7 +37,6 @@ module Data.Model
   -- * Processs
   , Process
   , after
-  , fun
 
   , supply
   , prepended
@@ -51,17 +47,16 @@ module Data.Model
   , takingWhile
   , buffered
 
-  -- ** Mealy
+  -- ** Automata
+  , Automaton(..)
   , Mealy(..)
-  , mealy
-
-  -- ** Moore
   , Moore(..)
-  , moore
 
   -- * Sources
   , Source
   , source
+  , repeated
+  , cycled
   , cap
 
   -- * Tees
@@ -79,9 +74,10 @@ import Data.Foldable
 import Prelude hiding ((.),id)
 
 -------------------------------------------------------------------------------
--- A Machine can be compiled to a Model
+-- Machines
 -------------------------------------------------------------------------------
 
+-- | You can 'compile' a 'Machine' into a 'Model'
 newtype Machine k i o a = Machine
   { runMachine :: forall r.
       (a -> r) ->           -- return
@@ -155,9 +151,10 @@ shutdown (Yield o k)   = o : shutdown k
 shutdown (Await _ _ f) = shutdown f
 
 -------------------------------------------------------------------------------
--- Stream Transducers
+-- Transduction Models
 -------------------------------------------------------------------------------
 
+-- | A model reads from a number of inputs and yields results.
 data Model k i o
   = Yield o (Model k i o)
   | forall r. Await (r -> Model k i o) (k i r) (Model k i o)
@@ -183,64 +180,64 @@ fitting f (Yield o k)     = Yield o (fitting f k)
 fitting _ Stop            = Stop
 fitting f (Await g kir h) = Await (fitting f . g) (f kir) (fitting f h)
 
-runModel :: Functor (k i) => (o -> r -> r) -> (k i r -> r -> r) -> r -> Model k i o -> r
-runModel ke kr kf m = go m where
-  go (Yield o k)        = ke o (go k)
+runModel :: Functor (k i) => Model k i o -> (o -> r -> r) -> (k i r -> r -> r) -> r -> r
+runModel m ke kr kf  = go m where
+  go (Yield o k)     = ke o (go k)
   go (Await f kir r) = kr (fmap (go . f) kir) (go r)
-  go Stop              = kf
+  go Stop            = kf
 {-# INLINE runModel #-}
 
--- | Compile a
+-- | Compile a machine to a model.
 compile :: Machine k i o a -> Model k i o
 compile m = runMachine m (const Stop) Yield (Await id) Stop
 
+-- | Generates a model that runs a machine until it stops, then start it up again.
+--
+-- @'repeatedly' m = 'compile' ('forever' m)@
 repeatedly :: Machine k i o a -> Model k i o
 repeatedly m = r where r = runMachine m (const r) Yield (Await id) Stop
 
+-- | Evaluate a machine until it stops, and then yield answers according to the supplied model.
 before :: Model k i o -> Machine k i o a -> Model k i o
 before f m = runMachine m (const f) Yield (Await id) Stop
 
 instance Category (Model (->)) where
-  id = repeatedly $ do
-     i <- await
-     yield i
+  id = Await (`Yield` id) id Stop
+  Stop          . _              = Stop
+  Yield a as    . sf             = Yield a (as . sf)
+  Await f kir _ . Yield b bs     = fmap f kir b . bs
+  Await _ _ k   . Stop           = k . Stop
+  sf            . Await g kir fg = Await (\a -> sf . g a) kir (sf . fg)
 
-  Stop        . _                = Stop
-  Yield a as   . sf               = Yield a (as . sf)
-  Await f kir _ . Yield b bs    = fmap f kir b . bs
-  Await _ _ k . Stop           = k . Stop
-  sf          . Await g kir fg = Await (\a -> sf . g a) kir (sf . fg)
+class Automaton k where
+  auto :: k a b -> Process a b
 
-fun :: (a -> b) -> Process a b
-fun f = repeatedly $ do
-  i <- await
-  yield (f i)
+instance Automaton (->) where
+  auto f = repeatedly $ do
+    i <- await
+    yield (f i)
 
-repeated :: o -> Model k i o
-repeated = repeatedly . yield
 
 type Process = Model (->)
 
--- | Mealy machines
+-- | 'Mealy' machines
 newtype Mealy a b = Mealy { runMealy :: a -> (b, Mealy a b) }
 
--- | Compile a 'Mealy' 'Machine'
-mealy :: Mealy a b -> Process a b
-mealy = compile . loop where
-  loop (Mealy f) = await >>= \a -> case f a of
-    (b, m) -> do
-       yield b
-       loop m
+instance Automaton Mealy where
+  auto = compile . loop where
+    loop (Mealy f) = await >>= \a -> case f a of
+      (b, m) -> do
+         yield b
+         loop m
 
--- | Moore machines
+-- | 'Moore' machines
 data Moore a b = Moore b (a -> Moore a b)
 
--- | Compile a 'Moore' 'Machine'
-moore :: Moore a b -> Process a b
-moore = compile . loop where
-  loop (Moore b f) = do
-    yield b
-    await >>= loop . f
+instance Automaton Moore where
+  auto = compile . loop where
+    loop (Moore b f) = do
+      yield b
+      await >>= loop . f
 
 prepended :: Foldable f => f a -> Process a a
 prepended = before id . traverse_ yield
@@ -316,7 +313,16 @@ pass input = repeatedly $ do
 -- Source
 -------------------------------------------------------------------------------
 
+-- | A 'Source' never reads from its input.
 type Source b = forall k a. Model k a b
+
+-- | Repeat the same value, over and over.
+repeated :: o -> Source o
+repeated = repeatedly . yield
+
+-- | Loop through a 'Foldable' container over and over.
+cycled :: Foldable f => f b -> Source b
+cycled xs = repeatedly (traverse_ yield xs)
 
 -- | Generate a 'Source' from any 'Foldable' container.
 source :: Foldable f => f b -> Source b
@@ -400,3 +406,15 @@ capR s t = fitting capped (addR s t)
 capped :: Fork (Either a a) b -> a -> b
 capped (R r) = r
 capped (L r) = r
+
+{-
+class Handled k where
+  handleMatches :: Handle k i o -> k i r -> Bool
+
+instance Handled (->) where
+  handleMatches _ _ = True
+
+instance Handled Fork where
+  handleMatches h L{} = case h id of L{} -> True; _ -> False
+  handleMatches h R{} = case h id of R{} -> True; _ -> False
+-}
