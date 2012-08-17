@@ -30,7 +30,7 @@ source-repository head
 library
   build-depends: base >= 4.3 && < 5
 
-  exposed-modules: Data.Transducer
+  exposed-modules: Data.Model
 
   other-extensions:
     FlexibleInstances
