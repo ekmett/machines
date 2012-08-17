@@ -1,4 +1,6 @@
-{-# LANGUAGE Rank2Types, GADTs, FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE FlexibleInstances #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Process

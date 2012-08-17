@@ -1,4 +1,5 @@
-{-# LANGUAGE Rank2Types, FlexibleInstances #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE FlexibleInstances #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Source

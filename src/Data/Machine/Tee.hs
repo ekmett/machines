@@ -1,4 +1,5 @@
-{-# LANGUAGE Rank2Types, GADTs #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE Rank2Types #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Tee
