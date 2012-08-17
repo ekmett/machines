@@ -1,5 +1,7 @@
-{-# LANGUAGE Rank2Types, FlexibleInstances #-}
-{-# OPTIONS_GHC -Wall #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Plan
@@ -8,7 +10,7 @@
 --
 -- Maintainer  :  Edward Kmett <ekmett@gmail.com>
 -- Stability   :  provisional
--- Portability :  rank-2
+-- Portability :  rank-2, MPTCs
 --
 ----------------------------------------------------------------------------
 module Data.Machine.Plan
@@ -31,6 +33,9 @@ import Control.Category
 import Control.Monad (ap, MonadPlus(..))
 import Control.Monad.Trans.Class
 import Control.Monad.IO.Class
+import Control.Monad.State.Class
+import Control.Monad.Reader.Class
+import Control.Monad.Error.Class
 import Data.Functor.Identity
 import Prelude hiding ((.),id)
 
@@ -49,6 +54,7 @@ newtype PlanT k i o m a = PlanT
       m r ->                        -- Fail
       m r
   }
+
 
 -- | A @'Plan' k i o a@ is a specification for a pure 'Machine', that reads inputs selected by @k@
 -- with types based on @i@, writes values of type @o@, and has intermediate results of type @a@.
@@ -100,6 +106,20 @@ instance MonadTrans (PlanT k i o) where
 
 instance MonadIO m => MonadIO (PlanT k i o m) where
   liftIO m = PlanT (\kp _ _ _ -> liftIO m >>= kp)
+
+instance MonadState s m => MonadState s (PlanT k i o m) where
+  get = lift get
+  put = lift . put
+  state f = PlanT $ \kp _ _ _ -> state f >>= kp
+
+instance MonadReader e m => MonadReader e (PlanT k i o m) where
+  ask = lift ask
+  reader = lift . reader
+  local f m = PlanT $ \kp ke kr kf -> local f (runPlanT m kp ke kr kf)
+
+instance MonadError e m => MonadError e (PlanT k i o m) where
+  throwError = lift . throwError
+  catchError m k = PlanT $ \kp ke kr kf -> runPlanT m kp ke kr kf `catchError` \e -> runPlanT (k e) kp ke kr kf
 
 -- | Output a result.
 yield :: o -> Plan k i o ()

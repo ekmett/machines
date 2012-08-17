@@ -30,7 +30,8 @@ source-repository head
 library
   build-depends:
     base         == 4.*,
-    transformers == 0.3.*
+    transformers == 0.3.*,
+    mtl          >= 2.1.1 && < 2.2
 
   exposed-modules:
     Data.Machine
@@ -44,7 +45,9 @@ library
   other-extensions:
     FlexibleInstances
     GADTs
+    MultiParamTypeClasses
     Rank2Types
+    UndecidableInstances
 
   ghc-options: -Wall -fwarn-tabs -O2 -fdicts-cheap -funbox-strict-fields
   hs-source-dirs: src
