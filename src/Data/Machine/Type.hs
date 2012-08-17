@@ -82,9 +82,9 @@ run = runIdentity . runT
 -- @'fitting' 'id' = 'id'@
 --
 -- @
--- 'fitting' 'L' :: 'Process' a c -> 'Tee' a b c
--- 'fitting' 'R' :: 'Process' b c -> 'Tee' a b c
--- 'fitting' 'id' :: 'Process' a b -> 'Process' a b
+-- 'fitting' 'Data.Machine.Tee.L' :: 'Data.Machine.Process.Process' a c -> 'Data.Machine.Tee.Tee' a b c
+-- 'fitting' 'Data.Machine.Tee.R' :: 'Data.Machine.Process.Process' b c -> 'Data.Machine.Tee.Tee' a b c
+-- 'fitting' 'id' :: 'Data.Machine.Process.Process' a b -> 'Data.Machine.Process.Process' a b
 -- @
 fitting :: Monad m => (forall a. k i a -> k' i' a) -> MachineT m k i o -> MachineT m k' i' o
 fitting f (MachineT m) = MachineT (liftM f' m) where
@@ -122,9 +122,9 @@ before (MachineT n) m = MachineT $ runPlanT m
 -- | Given a handle, ignore all other inputs and just stream input from that handle.
 --
 -- @
--- 'pass' 'id' :: 'Process' a a
--- 'pass' 'L'  :: 'Tee' a b a
--- 'pass' 'R'  :: 'Tee' a b b
+-- 'pass' 'id' :: 'Data.Machine.Process.Process' a a
+-- 'pass' 'Data.Machine.Tee.L'  :: 'Data.Machine.Tee.Tee' a b a
+-- 'pass' 'Data.Machine.Tee.R'  :: 'Data.Machine.Tee.Tee' a b b
 -- @
 pass :: Functor (k i) => Handle k i o -> Machine k i o
 pass input = repeatedly $ do
@@ -145,7 +145,7 @@ instance Monad m => Category (MachineT m (->)) where
       Await g kg fg -> let mv = MachineT (return v) in
         return (Await (\a -> mv . g a) kg (mv . fg))
 
--- | This is a stopped machine
+-- | This is a stopped 'Machine'
 stopped :: Machine k a b
 stopped = MachineT (return Stop)
 
@@ -155,7 +155,8 @@ stopped = MachineT (return Stop)
 
 {-
 -- |
--- A 'Sink' in this model is a 'Process' (or 'Tee', etc) that produces a single answer.
+-- A Sink in this model is a 'Data.Machine.Process.Process'
+-- (or 'Data.Machine.Tee.Tee', etc) that produces a single answer.
 --
 -- \"Is that your final answer?\"
 sink :: Monad m => (forall o. PlanT k i o m a) -> MachineT m k i a
