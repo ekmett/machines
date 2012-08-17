@@ -91,10 +91,10 @@ import Prelude hiding ((.),id)
 -- @
 newtype Plan k i o a = Plan
   { runPlan :: forall r.
-      (a -> r) ->           -- return
-      (o -> r -> r) ->      -- yield
-      (k i r -> r -> r) ->  -- await
-      r ->                  -- fail
+      (a -> r) ->           -- Done a
+      (o -> r -> r) ->      -- Yield o (Plan k i o a)
+      (k i r -> r -> r) ->  -- Await (k i (Plan k i o a)) (Plan k i o a)
+      r ->                  -- Fail
       r
   }
 
