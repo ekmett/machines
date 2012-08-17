@@ -24,7 +24,7 @@ module Data.Model
   -- * Stream Transducers
   , Model(..)
   , runModel
-  , shutdown
+  , evaluate
   , fitting
   , pass
 
@@ -145,10 +145,10 @@ stop :: Machine k i o a
 stop = empty
 
 -- | Stop feeding input into model and extract an answer
-shutdown :: Model k a b -> [b]
-shutdown Stop          = []
-shutdown (Yield o k)   = o : shutdown k
-shutdown (Await _ _ f) = shutdown f
+evaluate :: Model k a b -> [b]
+evaluate Stop          = []
+evaluate (Yield o k)   = o : evaluate k
+evaluate (Await _ _ f) = evaluate f
 
 -------------------------------------------------------------------------------
 -- Transduction Models
@@ -402,7 +402,7 @@ capL s t = fitting capped (addL s t)
 capR :: Source b -> Tee a b c -> Process a c
 capR s t = fitting capped (addR s t)
 
--- | Natural fittingation used by 'capL' and 'capR'.
+-- | Natural transformation used by 'capL' and 'capR'.
 capped :: Fork (Either a a) b -> a -> b
 capped (R r) = r
 capped (L r) = r
