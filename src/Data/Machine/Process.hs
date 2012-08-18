@@ -47,8 +47,8 @@ import Prelude hiding ((.),id)
 type Process a b = Machine (->) a b
 
 -- | A @'ProcessT' m a b@ is a stream transducer that can consume values of type @a@
--- from its input, and produce values of type @b@ for its output, with side-effects
--- in the 'Monad' @m@.
+-- from its input, and produce values of type @b@ and has side-effects in the
+-- 'Monad' @m@.
 type ProcessT m a b = MachineT m (->) a b
 
 -- | An 'Automaton' is can be automatically lifted into a 'Process'
