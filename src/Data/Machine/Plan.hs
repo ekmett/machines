@@ -55,7 +55,6 @@ newtype PlanT k i o m a = PlanT
       m r
   }
 
-
 -- | A @'Plan' k i o a@ is a specification for a pure 'Machine', that reads inputs selected by @k@
 -- with types based on @i@, writes values of type @o@, and has intermediate results of type @a@.
 --
@@ -140,8 +139,8 @@ await = PlanT (\kp _ kr kf -> kr kp id kf)
 -- this acts like an input stream selector.
 --
 -- @
--- 'L' :: 'Handle' 'Merge' (a,b) a
--- 'R' :: 'Handle' 'Merge' (a,b) b
+-- 'L' :: 'Handle' 'T' ('Either' a b) a
+-- 'R' :: 'Handle' 'T' ('Either' a b) b
 -- @
 type Handle k i o = forall r. (o -> r) -> k i r
 
@@ -152,8 +151,8 @@ type Fitting k k' o i = forall r. k o r -> k' i r
 -- | Wait for a particular input.
 --
 -- @
--- awaits 'L'  :: 'Plan' 'Merge' (a,b) o a
--- awaits 'R'  :: 'Plan' 'Merge' (a,b) o b
+-- awaits 'L'  :: 'Plan' 'T' ('Either' a b) o a
+-- awaits 'R'  :: 'Plan' 'T' ('Either' a b) o b
 -- awaits 'id' :: 'Plan' (->) i o i
 -- @
 awaits :: Handle k i j -> Plan k i o j
