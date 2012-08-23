@@ -22,9 +22,6 @@ module Data.Machine.Plan
   , yield
   , await
   , stop
-  -- * Handling multiple inputs
-  , Handle
-  , Fitting
   , awaits
   ) where
 
@@ -132,34 +129,19 @@ yield o = PlanT (\kp ke _ _ -> ke o (kp ()))
 -- | Wait for input.
 --
 -- @'await' = 'awaits' 'id'@
-await :: Plan (->) i o i
+await :: Category k => Plan k i o i
 await = PlanT (\kp _ kr kf -> kr kp id kf)
-
--- | Many combinators are parameterized on the choice of 'Handle',
--- this acts like an input stream selector.
---
--- @
--- 'L' :: 'Handle' 'T' ('Either' a b) a
--- 'R' :: 'Handle' 'T' ('Either' a b) b
--- @
-type Handle k i o = forall r. (o -> r) -> k i r
-
--- |
--- @type 'Handle' = 'Fitting' (->)@
-type Fitting k k' o i = forall r. k o r -> k' i r
 
 -- | Wait for a particular input.
 --
 -- @
--- awaits 'L'  :: 'Plan' 'T' ('Either' a b) o a
--- awaits 'R'  :: 'Plan' 'T' ('Either' a b) o b
--- awaits 'id' :: 'Plan' (->) i o i
+-- awaits 'L'  :: 'Plan' 'T' (a, b) o a
+-- awaits 'R'  :: 'Plan' 'T' (a, b) o b
+-- awaits 'id' :: 'Plan' 'Data.Machine.Is.Is' i o i
 -- @
-awaits :: Handle k i j -> Plan k i o j
-awaits f = PlanT $ \kp _ kr -> kr kp (f id)
+awaits :: k i j -> Plan k i o j
+awaits h = PlanT $ \kp _ kr -> kr kp h
 
 -- | @'stop' = 'empty'@
 stop :: Plan k i o a
 stop = empty
-
-

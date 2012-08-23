@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Unread
@@ -6,19 +7,20 @@
 --
 -- Maintainer  :  Edward Kmett <ekmett@gmail.com>
 -- Stability   :  provisional
--- Portability :  rank 2 types
+-- Portability :  GADTs
 --
 ----------------------------------------------------------------------------
 module Data.Machine.Unread
   ( Unread(..)
   , peek
+  , unread
   ) where
 
 import Data.Machine.Plan
 
-data Unread a r
-  = Unread a (() -> r)
-  | Read (a -> r)
+data Unread a r where
+  Unread :: a -> Unread a ()
+  Read   :: Unread a a
 
 -- | Peek at the next value in the input stream without consuming it
 peek :: Plan Unread a b a

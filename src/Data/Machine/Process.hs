@@ -18,6 +18,7 @@ module Data.Machine.Process
     Process
   , ProcessT
   , Automaton(..)
+  , process
   -- ** Common Processes
   , after
   , supply
@@ -32,8 +33,9 @@ module Data.Machine.Process
 
 import Control.Applicative
 import Control.Category
-import Control.Monad (when, replicateM_)
+import Control.Monad (liftM, when, replicateM_)
 import Data.Foldable
+import Data.Machine.Is
 import Data.Machine.Plan
 import Data.Machine.Type
 import Prelude hiding ((.),id)
@@ -44,12 +46,12 @@ import Prelude hiding ((.),id)
 
 -- | A @'Process' a b@ is a stream transducer that can consume values of type @a@
 -- from its input, and produce values of type @b@ for its output.
-type Process a b = Machine (->) a b
+type Process a b = Machine Is a b
 
 -- | A @'ProcessT' m a b@ is a stream transducer that can consume values of type @a@
 -- from its input, and produce values of type @b@ and has side-effects in the
 -- 'Monad' @m@.
-type ProcessT m a b = MachineT m (->) a b
+type ProcessT m a b = MachineT m Is a b
 
 -- | An 'Automaton' is can be automatically lifted into a 'Process'
 class Automaton k where
@@ -59,6 +61,11 @@ instance Automaton (->) where
   auto f = repeatedly $ do
     i <- await
     yield (f i)
+
+instance Automaton Is where
+  auto Refl = repeatedly $ do
+    i <- await
+    yield i
 
 -- | A 'Process' that prepends the elements of a 'Foldable' onto its input, then repeats its input from there.
 prepended :: Foldable f => f a -> Process a a
@@ -109,16 +116,34 @@ after :: Monad m => MachineT m k a b -> ProcessT m b c -> MachineT m k a c
 after ma mp = MachineT $ runMachineT mp >>= \v -> case v of
   Stop          -> return Stop
   Yield o k     -> return $ Yield o (after ma k)
-  Await f kf ff -> runMachineT ma >>= \u -> case u of
+  Await f Refl ff -> runMachineT ma >>= \u -> case u of
     Stop          -> runMachineT $ after stopped ff
-    Yield o k     -> runMachineT $ after k (fmap f kf o)
+    Yield o k     -> runMachineT . after k $ f o
     Await g kg fg -> let mv = MachineT (return v) in
-      return $ Await (fmap (`after` mv) g) kg (after fg mv)
+      return $ Await (\a -> after (g a) mv) kg (after fg mv)
 
 -- | Feed a 'Process' some input.
 supply :: Monad m => [a] -> ProcessT m a b -> ProcessT m a b
 supply []         m = m
 supply xxs@(x:xs) m = MachineT $ runMachineT m >>= \v -> case v of
   Stop -> return Stop
-  Await f kir _ -> runMachineT $ supply xs (fmap f kir x)
+  Await f Refl _ -> runMachineT $ supply xs (f x)
   Yield o k -> return $ Yield o (supply xxs k)
+
+-- |
+-- Convert a machine into a process, with a little bit of help.
+--
+-- @'process' 'id' = 'id'@
+--
+-- @
+-- 'process' 'Data.Machine.Tee.L' :: 'Data.Machine.Process.Process' a c -> 'Data.Machine.Tee.Tee' a b c
+-- 'process' 'Data.Machine.Tee.R' :: 'Data.Machine.Process.Process' b c -> 'Data.Machine.Tee.Tee' a b c
+-- 'process' 'id' :: 'Data.Machine.Process.Process' a b -> 'Data.Machine.Process.Process' a b
+-- @
+process :: Monad m => (forall a. k i a -> i' -> a) -> MachineT m k i o -> ProcessT m i' o
+process f (MachineT m) = MachineT (liftM f' m) where
+  f' (Yield o k)     = Yield o (process f k)
+  f' Stop            = Stop
+  f' (Await g kir h) = Await (process f . g . f kir) Refl (process f h)
+
+

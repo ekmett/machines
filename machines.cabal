@@ -2,7 +2,7 @@ name:          machines
 category:      Control, Enumerator
 version:       0.1
 license:       BSD3
-cabal-version: >= 1.8
+cabal-version: >= 1.10
 license-file:  LICENSE
 author:        Edward A. Kmett, Rúnar Bjarnason
 maintainer:    Edward A. Kmett <ekmett@gmail.com>
@@ -39,6 +39,7 @@ library
   exposed-modules:
     Data.Machine
     Data.Machine.Id
+    Data.Machine.Is
     Data.Machine.Mealy
     Data.Machine.Moore
     Data.Machine.Process

@@ -11,6 +11,7 @@
 ----------------------------------------------------------------------------
 module Data.Machine
   ( module Data.Machine.Id
+  , module Data.Machine.Is
   , module Data.Machine.Moore
   , module Data.Machine.Mealy
   , module Data.Machine.Plan
@@ -18,9 +19,11 @@ module Data.Machine
   , module Data.Machine.Source
   , module Data.Machine.Tee
   , module Data.Machine.Type
+  , module Data.Machine.Wye
   ) where
 
 import Data.Machine.Id
+import Data.Machine.Is
 import Data.Machine.Mealy
 import Data.Machine.Moore
 import Data.Machine.Plan
@@ -28,3 +31,4 @@ import Data.Machine.Process
 import Data.Machine.Source
 import Data.Machine.Tee
 import Data.Machine.Type
+import Data.Machine.Wye

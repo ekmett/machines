@@ -29,7 +29,7 @@ module Data.Machine.Type
 --  , sink
 
   -- * Reshaping machines
-  , fitting
+  , fit
   , pass
 
   , stopped
@@ -40,6 +40,7 @@ import Control.Category
 import Control.Monad (liftM)
 import Data.Foldable
 import Data.Machine.Id
+import Data.Machine.Is
 import Data.Machine.Plan
 import Data.Monoid
 import Data.Profunctor
@@ -112,18 +113,18 @@ instance Foldable m => Foldable (MachineT m k i) where
 -- |
 -- Connect different kinds of machines.
 --
--- @'fitting' 'id' = 'id'@
+-- @'fit' 'id' = 'id'@
 --
 -- @
--- 'fitting' 'Data.Machine.Tee.L' :: 'Data.Machine.Process.Process' a c -> 'Data.Machine.Tee.Tee' a b c
--- 'fitting' 'Data.Machine.Tee.R' :: 'Data.Machine.Process.Process' b c -> 'Data.Machine.Tee.Tee' a b c
--- 'fitting' 'id' :: 'Data.Machine.Process.Process' a b -> 'Data.Machine.Process.Process' a b
+-- 'fit' 'Data.Machine.Tee.L' :: 'Data.Machine.Process.Process' a c -> 'Data.Machine.Tee.Tee' a b c
+-- 'fit' 'Data.Machine.Tee.R' :: 'Data.Machine.Process.Process' b c -> 'Data.Machine.Tee.Tee' a b c
+-- 'fit' 'id' :: 'Data.Machine.Process.Process' a b -> 'Data.Machine.Process.Process' a b
 -- @
-fitting :: Monad m => (forall a. k i a -> k' i' a) -> MachineT m k i o -> MachineT m k' i' o
-fitting f (MachineT m) = MachineT (liftM f' m) where
-  f' (Yield o k)     = Yield o (fitting f k)
+fit :: Monad m => (forall a. k i a -> k' i' a) -> MachineT m k i o -> MachineT m k' i' o
+fit f (MachineT m) = MachineT (liftM f' m) where
+  f' (Yield o k)     = Yield o (fit f k)
   f' Stop            = Stop
-  f' (Await g kir h) = Await (fitting f . g) (f kir) (fitting f h)
+  f' (Await g kir h) = Await (fit f . g) (f kir) (fit f h)
 
 -- | Compile a machine to a model.
 construct :: Monad m => PlanT k i o m a -> MachineT m k i o
@@ -159,12 +160,12 @@ before (MachineT n) m = MachineT $ runPlanT m
 -- 'pass' 'Data.Machine.Tee.L'  :: 'Data.Machine.Tee.Tee' a b a
 -- 'pass' 'Data.Machine.Tee.R'  :: 'Data.Machine.Tee.Tee' a b b
 -- @
-pass :: Functor (k i) => Handle k i o -> Machine k i o
+pass :: k i o -> Machine k i o
 pass input = repeatedly $ do
   a <- awaits input
   yield a
 
-instance Monad m => Category (MachineT m (->)) where
+instance Monad m => Category (MachineT m Is) where
   id = repeatedly $ do
     i <- await
     yield i
@@ -172,11 +173,10 @@ instance Monad m => Category (MachineT m (->)) where
   m . n = MachineT $ runMachineT m >>= \v -> case v of
     Stop          -> return Stop
     Yield a as    -> return $ Yield a (as . n)
-    Await f kir k -> runMachineT n >>= \u -> case u of
-      Stop          -> runMachineT (k . stopped)
-      Yield b bs    -> runMachineT (fmap f kir b . bs)
-      Await g kg fg -> let mv = encased v in
-        return (Await (\a -> mv . g a) kg (mv . fg))
+    Await f Refl k -> runMachineT n >>= \u -> case u of
+      Stop          -> runMachineT $ k . stopped
+      Yield b bs    -> runMachineT $ f b . bs
+      Await g Refl fg -> return $ Await (\a -> encased v . g a) Refl (encased v . fg)
 
 -- | This is a stopped 'Machine'
 stopped :: Machine k a b
