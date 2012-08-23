@@ -116,8 +116,6 @@ instance Foldable m => Foldable (MachineT m k i) where
 -- @'fit' 'id' = 'id'@
 --
 -- @
--- 'fit' 'Data.Machine.Tee.L' :: 'Data.Machine.Process.Process' a c -> 'Data.Machine.Tee.Tee' a b c
--- 'fit' 'Data.Machine.Tee.R' :: 'Data.Machine.Process.Process' b c -> 'Data.Machine.Tee.Tee' a b c
 -- 'fit' 'id' :: 'Data.Machine.Process.Process' a b -> 'Data.Machine.Process.Process' a b
 -- @
 fit :: Monad m => (forall a. k i a -> k' i' a) -> MachineT m k i o -> MachineT m k' i' o
@@ -159,6 +157,9 @@ before (MachineT n) m = MachineT $ runPlanT m
 -- 'pass' 'id' :: 'Data.Machine.Process.Process' a a
 -- 'pass' 'Data.Machine.Tee.L'  :: 'Data.Machine.Tee.Tee' a b a
 -- 'pass' 'Data.Machine.Tee.R'  :: 'Data.Machine.Tee.Tee' a b b
+-- 'pass' 'Data.Machine.Wye.X'  :: 'Data.Machine.Wye.Wye' a b a
+-- 'pass' 'Data.Machine.Wye.Y'  :: 'Data.Machine.Wye.Wye' a b b
+-- 'pass' 'Data.Machine.Wye.Z'  :: 'Data.Machine.Wye.Wye' a b (Either a b)
 -- @
 pass :: k i o -> Machine k i o
 pass input = repeatedly $ do
