@@ -18,6 +18,7 @@ module Data.Machine.Unread
 
 import Data.Machine.Plan
 
+-- | This is a simple process type that knows how to push back input.
 data Unread a r where
   Unread :: a -> Unread a ()
   Read   :: Unread a a

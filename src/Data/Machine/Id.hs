@@ -18,6 +18,7 @@ import Control.Comonad
 import Data.Foldable
 import Data.Traversable
 
+-- | 'Data.Functor.Identity' with more instances.
 newtype Id a = Id { runId :: a }
 
 instance Functor Id where

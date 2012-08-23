@@ -17,6 +17,7 @@ module Data.Machine.Is
 import Control.Category
 import Data.Monoid
 
+-- | Witnessed type equality
 data Is a b where
   Refl :: Is a a
 

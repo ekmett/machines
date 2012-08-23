@@ -76,6 +76,7 @@ type Machine k i o = forall m. Monad m => MachineT m k i o
 runMachine :: MachineT Id k i o -> Step k i o (MachineT Id k i o)
 runMachine = runId . runMachineT
 
+-- | Pack a Step of a Machine into a Machine.
 encased :: Monad m => Step k i o (MachineT m k i o) -> MachineT m k i o
 encased = MachineT . return
 
@@ -84,6 +85,31 @@ instance Monad m => Functor (MachineT m k i) where
     f' (Yield o xs)    = Yield (f o) (f <$> xs)
     f' (Await k kir e) = Await (fmap f . k) kir (f <$> e)
     f' Stop            = Stop
+
+{-
+apMachines :: Maybe (Seq i) -> Seq a -> MachineT m k i (a -> b) -> MachineT m k i a -> MachineT m k i b
+apMachines is as m n = MachineT $ runMachineT m >>= \u -> case u of
+  Stop -> return Stop
+  Yield f m' -> case viewl as of
+    a :< as' -> return $ Yield (f a) (apMachines is as' m' n)
+    EmptyL   -> paMachines is (Seq.singleton f) m' n
+  Await k Refl kf -> case is of
+    Nothing ->
+
+paMachines :: Maybe (Seq i) -> Seq (a -> b) -> MachineT m k i (a -> b) -> MachineT m k i a -> MachineT m k i b
+paMachines is fs m n = MachineT $ runMachineT n >>= \v -> case v of
+  Stop -> return Stop
+  Yield a n' -> case viewl fs of
+    f :< fs' -> return $ Yield (f a) (paMachines is fs' m n')
+    EmptyL   -> apMachines is (Seq.singleton a) m n'
+
+instance (k ~ Is, Monad m) => Applicative (MachineT m k i) where
+  pure = repeatedly . yield
+  m <*>  n = runMachineT m >>= \u -> case u of
+    Stop       -> return stopped
+    Yield f xs ->
+    Await f Refl ff ->
+-}
 
 instance (Monad m, Profunctor k) => Profunctor (MachineT m k) where
   rmap = fmap
@@ -166,7 +192,8 @@ pass input = repeatedly $ do
   a <- awaits input
   yield a
 
-instance Monad m => Category (MachineT m Is) where
+-- | Eventually this will probably revert to @instance 'Monad' m => 'Category' ('MachineT' m 'Is')@
+instance (k ~ Is, Monad m) => Category (MachineT m k) where
   id = repeatedly $ do
     i <- await
     yield i
