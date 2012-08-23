@@ -3,6 +3,23 @@ machines
 
 [![Build Status](https://secure.travis-ci.org/ekmett/machines.png?branch=master)](http://travis-ci.org/ekmett/machines)
 
+Machines are demand driven input sources like pipes or conduits, but can support multiple inputs.
+
+You design a `Machine` by writing a `Plan`. You then `construct` the machine.
+
+Simple machines that take one input are called a `Process` and processes form a `Category`. More generally you can attach a
+`Process` to the output of any type of `Machine`, yielding a new `Machine`.
+
+More complicated machines provide other ways of connecting to them.
+
+Typically the use of machines proceeds by using simple plans into machine `Tee`s and `Wye`s, capping many of the inputs to
+those with possibly monadic sources, feeding the rest input (possibly repeatedly) and calling `run` or `runT` to get the
+answers out.
+
+There is a lot of flexibility when building a machine in choosing between empowering the machine to run its own monadic effects
+or delegating that responsibility to a custom driver.
+
+
 Contact Information
 -------------------
 
