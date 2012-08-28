@@ -18,6 +18,8 @@ module Data.Machine.Type
     MachineT(..)
   , Step(..)
   , Machine
+  , runT_
+  , runT
   , run
   , runMachine
   , encased
@@ -118,6 +120,13 @@ instance (Monad m, Profunctor k) => Profunctor (MachineT m k) where
     f' (Await k kir e) = Await (lmap f . k) (lmap f kir) (lmap f e)
     f' Stop            = Stop
 
+-- | Stop feeding input into model, taking only the effects.
+runT_ :: Monad m => MachineT m k a b -> m ()
+runT_ (MachineT m) = m >>= \v -> case v of
+  Stop        -> return ()
+  Yield _ k   -> runT_ k
+  Await _ _ e -> runT_ e
+
 -- | Stop feeding input into model and extract an answer
 runT :: Monad m => MachineT m k a b -> m [b]
 runT (MachineT m) = m >>= \v -> case v of
@@ -160,7 +169,7 @@ construct m = MachineT $ runPlanT m
 
 -- | Generates a model that runs a machine until it stops, then start it up again.
 --
--- @'repeatedly' m = 'construct' ('forever' m)@
+-- @'repeatedly' m = 'construct' ('Control.Monad.forever' m)@
 repeatedly :: Monad m => PlanT k i o m a -> MachineT m k i o
 repeatedly m = r where
   r = MachineT $ runPlanT m

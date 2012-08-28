@@ -13,6 +13,7 @@
 module Data.Machine.Mealy
   ( Mealy(..)
   , unfoldMealy
+  , logMealy
   ) where
 
 import Control.Applicative
@@ -22,6 +23,8 @@ import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
 import Data.Profunctor
+import Data.Semigroup
+import Data.Sequence as Seq
 import Prelude hiding ((.),id)
 
 -- | 'Mealy' machines
@@ -94,3 +97,20 @@ instance ArrowChoice Mealy where
       (d, m') -> (d, m' ||| n)
     Right b -> case runMealy n b of
       (d, n') -> (d, m ||| n')
+
+-- | Fast forward a mealy machine forward
+driveMealy :: Mealy a b -> Seq a -> a -> (b, Mealy a b)
+driveMealy m xs z = case viewl xs of
+  y :< ys -> case runMealy m y of
+    (_, n) -> driveMealy n ys z
+  EmptyL  -> runMealy m z
+
+-- | Accumulate history.
+logMealy :: Semigroup a => Mealy a a
+logMealy = Mealy $ \a -> (a, h a) where
+  h a = Mealy $ \b -> let c = a <> b in (c, h c)
+
+instance ArrowApply Mealy where
+  app = go Seq.empty where
+    go xs = Mealy $ \(m,x) -> case driveMealy m xs x of
+      (c, _) -> (c, go (xs |> x))

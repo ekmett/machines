@@ -6,7 +6,7 @@
 --
 -- Maintainer  :  Edward Kmett <ekmett@gmail.com>
 -- Stability   :  provisional
--- Portability :  rank-2, GADTs
+-- Portability :  non-portable
 --
 ----------------------------------------------------------------------------
 module Data.Machine

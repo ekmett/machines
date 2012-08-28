@@ -9,7 +9,7 @@
 --
 -- Maintainer  :  Edward Kmett <ekmett@gmail.com>
 -- Stability   :  provisional
--- Portability :  rank-2, GADTs
+-- Portability :  Rank 2 Types, GADTs
 --
 ----------------------------------------------------------------------------
 module Data.Machine.Process

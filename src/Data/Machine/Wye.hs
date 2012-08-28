@@ -8,7 +8,7 @@
 --
 -- Maintainer  :  Edward Kmett <ekmett@gmail.com>
 -- Stability   :  provisional
--- Portability :  rank-2
+-- Portability :  Rank-2 Types, GADTs
 --
 ----------------------------------------------------------------------------
 module Data.Machine.Wye

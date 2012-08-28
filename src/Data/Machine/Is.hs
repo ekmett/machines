@@ -7,7 +7,7 @@
 --
 -- Maintainer  :  Edward Kmett <ekmett@gmail.com>
 -- Stability   :  provisional
--- Portability :  GADTs
+-- Portability :  GADTs, Type Families
 --
 ----------------------------------------------------------------------------
 module Data.Machine.Is

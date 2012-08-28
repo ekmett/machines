@@ -10,7 +10,7 @@
 --
 -- Maintainer  :  Edward Kmett <ekmett@gmail.com>
 -- Stability   :  provisional
--- Portability :  rank-2, MPTCs
+-- Portability :  Rank-N Types, MPTCs
 --
 ----------------------------------------------------------------------------
 module Data.Machine.Plan

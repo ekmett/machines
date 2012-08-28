@@ -12,6 +12,8 @@
 ----------------------------------------------------------------------------
 module Data.Machine.Moore
   ( Moore(..)
+  , logMoore
+  , unfoldMoore
   ) where
 
 import Control.Applicative
@@ -20,10 +22,22 @@ import Control.Monad
 import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
+import Data.Monoid
 import Data.Profunctor
 
 -- | 'Moore' machines
 data Moore a b = Moore b (a -> Moore a b)
+
+-- | Accumulate the input as a sequence.
+logMoore :: Monoid m => Moore m m
+logMoore = h mempty where
+  h m = Moore m (\a -> h (m <> a))
+
+-- | Construct a Moore machine from a state valuation and transition function
+unfoldMoore :: (s -> (b, a -> s)) -> s -> Moore a b
+unfoldMoore f = go where
+  go s = case f s of
+    (b, g) -> Moore b (go . g)
 
 instance Automaton Moore where
   auto = construct . go where
@@ -59,4 +73,3 @@ instance ComonadApply (Moore a) where
   Moore f ff <@> Moore a fa = Moore (f a) (\i -> ff i <*> fa i)
   m <@ _ = m
   _ @> n = n
-
