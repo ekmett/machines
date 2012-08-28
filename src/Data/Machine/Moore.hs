@@ -16,6 +16,7 @@ module Data.Machine.Moore
 
 import Control.Applicative
 import Control.Comonad
+import Control.Monad
 import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
@@ -43,6 +44,13 @@ instance Applicative (Moore a) where
   m <* _ = m
   _ *> n = n
 
+-- | slow diagonalization
+instance Monad (Moore a) where
+  return a = r where r = Moore a (const r)
+  Moore a k >>= f = case f a of
+    Moore b _ -> Moore b (k >=> f)
+  _ >> m = m
+
 instance Comonad (Moore a) where
   extract (Moore b _) = b
   extend f w@(Moore _ g) = Moore (f w) (extend f . g)
@@ -51,3 +59,4 @@ instance ComonadApply (Moore a) where
   Moore f ff <@> Moore a fa = Moore (f a) (\i -> ff i <*> fa i)
   m <@ _ = m
   _ @> n = n
+

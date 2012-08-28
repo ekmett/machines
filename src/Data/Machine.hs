@@ -10,8 +10,7 @@
 --
 ----------------------------------------------------------------------------
 module Data.Machine
-  ( module Data.Machine.Id
-  , module Data.Machine.Is
+  ( module Data.Machine.Is
   , module Data.Machine.Moore
   , module Data.Machine.Mealy
   , module Data.Machine.Plan
@@ -22,7 +21,6 @@ module Data.Machine
   , module Data.Machine.Wye
   ) where
 
-import Data.Machine.Id
 import Data.Machine.Is
 import Data.Machine.Mealy
 import Data.Machine.Moore
