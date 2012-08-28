@@ -15,11 +15,11 @@
 <a name="line-6"></a><span class='hs-comment'>--</span>
 <a name="line-7"></a><span class='hs-comment'>-- Maintainer  :  Edward Kmett &lt;ekmett@gmail.com&gt;</span>
 <a name="line-8"></a><span class='hs-comment'>-- Stability   :  provisional</span>
-<a name="line-9"></a><span class='hs-comment'>-- Portability :  rank-2, GADTs</span>
+<a name="line-9"></a><span class='hs-comment'>-- Portability :  non-portable</span>
 <a name="line-10"></a><span class='hs-comment'>--</span>
 <a name="line-11"></a><span class='hs-comment'>----------------------------------------------------------------------------</span>
 <a name="line-12"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span>
-<a name="line-13"></a>  <span class='hs-layout'>(</span> <span class='hs-keyword'>module</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Id</span>
+<a name="line-13"></a>  <span class='hs-layout'>(</span> <span class='hs-keyword'>module</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Is</span>
 <a name="line-14"></a>  <span class='hs-layout'>,</span> <span class='hs-keyword'>module</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Moore</span>
 <a name="line-15"></a>  <span class='hs-layout'>,</span> <span class='hs-keyword'>module</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Mealy</span>
 <a name="line-16"></a>  <span class='hs-layout'>,</span> <span class='hs-keyword'>module</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Plan</span>
@@ -27,15 +27,17 @@
 <a name="line-18"></a>  <span class='hs-layout'>,</span> <span class='hs-keyword'>module</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Source</span>
 <a name="line-19"></a>  <span class='hs-layout'>,</span> <span class='hs-keyword'>module</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Tee</span>
 <a name="line-20"></a>  <span class='hs-layout'>,</span> <span class='hs-keyword'>module</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Type</span>
-<a name="line-21"></a>  <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
-<a name="line-22"></a>
-<a name="line-23"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Id</span>
-<a name="line-24"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Mealy</span>
-<a name="line-25"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Moore</span>
-<a name="line-26"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Plan</span>
-<a name="line-27"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Process</span>
-<a name="line-28"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Source</span>
-<a name="line-29"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Tee</span>
-<a name="line-30"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Type</span>
+<a name="line-21"></a>  <span class='hs-layout'>,</span> <span class='hs-keyword'>module</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Wye</span>
+<a name="line-22"></a>  <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
+<a name="line-23"></a>
+<a name="line-24"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Is</span>
+<a name="line-25"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Mealy</span>
+<a name="line-26"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Moore</span>
+<a name="line-27"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Plan</span>
+<a name="line-28"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Process</span>
+<a name="line-29"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Source</span>
+<a name="line-30"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Tee</span>
+<a name="line-31"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Type</span>
+<a name="line-32"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Wye</span>
 </pre></body>
 </html>
