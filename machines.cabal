@@ -1,6 +1,6 @@
 name:          machines
 category:      Control, Enumerator
-version:       0.1
+version:       0.1.1
 license:       BSD3
 cabal-version: >= 1.10
 license-file:  LICENSE
@@ -45,6 +45,7 @@ library
     Data.Machine.Moore
     Data.Machine.Process
     Data.Machine.Plan
+    Data.Machine.Source
     Data.Machine.Tee
     Data.Machine.Type
     Data.Machine.Unread
