@@ -69,7 +69,7 @@ instance Automaton (->) where
 instance Automaton Is where
   auto Refl = echo
 
--- | The trivial 'Process' that simply repeats its input over and over again.
+-- | The trivial 'Process' that simply repeats each input it receives.
 echo :: Process a a
 echo = repeatedly $ do
   i <- await
