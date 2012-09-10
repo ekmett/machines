@@ -33,10 +33,10 @@ import Prelude hiding ((.),id)
 -------------------------------------------------------------------------------
 
 -- | A 'Source' never reads from its inputs.
-type Source b = forall k a. Machine k a b
+type Source b = forall k. Machine k b
 
 -- | A 'SourceT' never reads from its inputs, but may have monadic side-effects.
-type SourceT m b = forall k a. MachineT m k a b
+type SourceT m b = forall k. MachineT m k b
 
 -- | Repeat the same value, over and over.
 repeated :: o -> Source o
@@ -56,7 +56,7 @@ source xs = construct (traverse_ yield xs)
 -- Alternately you can view this as capping the 'Source' end of a 'Process',
 -- yielding a new 'Source'.
 --
--- @'cap' = 'pipe'@
+-- @'cap' l r = l '<~' r@
 --
 cap :: Process a b -> Source a -> Source b
-cap l r = after r l
+cap l r = l <~ r

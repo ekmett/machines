@@ -20,7 +20,6 @@ module Data.Machine.Tee
   , capL, capR
   ) where
 
-import Control.Category
 import Data.Machine.Is
 import Data.Machine.Process
 import Data.Machine.Type
@@ -32,15 +31,15 @@ import Prelude hiding ((.),id)
 -------------------------------------------------------------------------------
 
 -- | The input descriptor for a 'Tee' or 'TeeT'
-data T i c where
-  L :: T (a, b) a
-  R :: T (a, b) b
+data T a b c where
+  L :: T a b a
+  R :: T a b b
 
 -- | A 'Machine' that can read from two input stream in a deterministic manner.
-type Tee a b c = Machine T (a, b) c
+type Tee a b c = Machine (T a b) c
 
 -- | A 'Machine' that can read from two input stream in a deterministic manner with monadic side-effects.
-type TeeT m a b c = MachineT m T (a, b) c
+type TeeT m a b c = MachineT m (T a b) c
 
 -- | Compose a pair of pipes onto the front of a Tee.
 tee :: Monad m => ProcessT m a a' -> ProcessT m b b' -> TeeT m a' b' c -> TeeT m a b c
@@ -60,11 +59,11 @@ tee ma mb m = MachineT $ runMachineT m >>= \v -> case v of
 
 -- | Precompose a pipe onto the left input of a tee.
 addL :: Monad m => ProcessT m a b -> TeeT m b c d -> TeeT m a c d
-addL p = tee p id
+addL p = tee p echo
 
 -- | Precompose a pipe onto the right input of a tee.
 addR :: Monad m => ProcessT m b c -> TeeT m a c d -> TeeT m a b d
-addR = tee id
+addR = tee echo
 
 -- | Tie off one input of a tee by connecting it to a known source.
 capL :: Monad m => SourceT m a -> TeeT m a b c -> ProcessT m b c
@@ -75,6 +74,6 @@ capR :: Monad m => SourceT m b -> TeeT m a b c -> ProcessT m a c
 capR s t = fit cappedT $ addR s t
 
 -- | Natural transformation used by 'capL' and 'capR'.
-cappedT :: T (a, a) b -> Is a b
+cappedT :: T a a b -> Is a b
 cappedT R = Refl
 cappedT L = Refl

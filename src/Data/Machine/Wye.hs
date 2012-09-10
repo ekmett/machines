@@ -33,16 +33,16 @@ import Prelude hiding ((.),id)
 -------------------------------------------------------------------------------
 
 -- | The input descriptor for a 'Wye' or 'WyeT'
-data Y i c where
-  X :: Y (a, b) a            -- block waiting on the left input
-  Y :: Y (a, b) b            -- block waiting on the right input
-  Z :: Y (a, b) (Either a b) -- block waiting on either input
+data Y a b c where
+  X :: Y a b a            -- block waiting on the left input
+  Y :: Y a b b            -- block waiting on the right input
+  Z :: Y a b (Either a b) -- block waiting on either input
 
 -- | A 'Machine' that can read from two input stream in a non-deterministic manner.
-type Wye a b c = Machine Y (a, b) c
+type Wye a b c = Machine (Y a b) c
 
 -- | A 'Machine' that can read from two input stream in a non-deterministic manner with monadic side-effects.
-type WyeT m a b c = MachineT m Y (a, b) c
+type WyeT m a b c = MachineT m (Y a b) c
 
 -- | Compose a pair of pipes onto the front of a 'Wye'.
 
@@ -82,11 +82,11 @@ wye ma mb m = MachineT $ runMachineT m >>= \v -> case v of
 
 -- | Precompose a pipe onto the left input of a wye.
 addX :: Monad m => ProcessT m a b -> WyeT m b c d -> WyeT m a c d
-addX p = wye p id
+addX p = wye p echo
 
 -- | Precompose a pipe onto the right input of a tee.
 addY :: Monad m => ProcessT m b c -> WyeT m a c d -> WyeT m a b d
-addY = wye id
+addY = wye echo
 
 -- | Tie off one input of a tee by connecting it to a known source.
 capX :: Monad m => SourceT m a -> WyeT m a b c -> ProcessT m b c
@@ -97,7 +97,7 @@ capY :: Monad m => SourceT m b -> WyeT m a b c -> ProcessT m a c
 capY s t = process (capped Left) (addY s t)
 
 -- | Natural transformation used by 'capX' and 'capY'
-capped :: (a -> Either a a) -> Y (a, a) b -> a -> b
+capped :: (a -> Either a a) -> Y a a b -> a -> b
 capped _ X = id
 capped _ Y = id
 capped f Z = f
