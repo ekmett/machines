@@ -23,6 +23,7 @@ import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
 import Data.Profunctor
+import Data.Pointed
 import Data.Semigroup
 import Data.Sequence as Seq
 import Prelude hiding ((.),id)
@@ -41,6 +42,9 @@ instance Applicative (Mealy a) where
        (b, n') -> (f b, m' <*> n')
   m <* _ = m
   _ *> n = n
+
+instance Pointed (Mealy a) where
+  point b = r where r = Mealy (const (b, r))
 
 -- | A 'Mealy' machine modeled with explicit state.
 unfoldMealy :: (s -> a -> (b, s)) -> s -> Mealy a b

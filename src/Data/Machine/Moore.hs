@@ -19,10 +19,12 @@ module Data.Machine.Moore
 import Control.Applicative
 import Control.Comonad
 import Control.Monad
+import Data.Copointed
 import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
 import Data.Monoid
+import Data.Pointed
 import Data.Profunctor
 
 -- | 'Moore' machines
@@ -58,12 +60,18 @@ instance Applicative (Moore a) where
   m <* _ = m
   _ *> n = n
 
+instance Pointed (Moore a) where
+  point a = r where r = Moore a (const r)
+
 -- | slow diagonalization
 instance Monad (Moore a) where
   return a = r where r = Moore a (const r)
   Moore a k >>= f = case f a of
     Moore b _ -> Moore b (k >=> f)
   _ >> m = m
+
+instance Copointed (Moore a) where
+  copoint (Moore b _) = b
 
 instance Comonad (Moore a) where
   extract (Moore b _) = b

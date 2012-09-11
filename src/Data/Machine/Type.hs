@@ -35,6 +35,9 @@ module Data.Machine.Type
   , pass
 
   , stopped
+
+  -- * Applicative Machines
+  , Appliance(..)
   ) where
 
 import Control.Applicative
@@ -44,6 +47,7 @@ import Data.Foldable
 import Data.Functor.Identity
 import Data.Machine.Plan
 import Data.Monoid
+import Data.Pointed
 import Prelude hiding ((.),id)
 
 -------------------------------------------------------------------------------
@@ -52,7 +56,7 @@ import Prelude hiding ((.),id)
 
 -- | This is the base functor for a 'Machine' or 'MachineT'.
 --
--- Note: Machines are usually constructed from 'Plan', so this does not need to be CPS'd.
+-- Note: A 'Machine' is usually constructed from 'Plan', so it does not need to be CPS'd.
 data Step k o r
   = Stop
   | Yield o r
@@ -76,7 +80,7 @@ type Machine k o = forall m. Monad m => MachineT m k o
 runMachine :: MachineT Identity k o -> Step k o (MachineT Identity k o)
 runMachine = runIdentity . runMachineT
 
--- | Pack a Step of a Machine into a Machine.
+-- | Pack a 'Step' of a 'Machine' into a 'Machine'.
 encased :: Monad m => Step k o (MachineT m k o) -> MachineT m k o
 encased = MachineT . return
 
@@ -86,9 +90,54 @@ instance Monad m => Functor (MachineT m k) where
     f' (Await k kir e) = Await (fmap f . k) kir (f <$> e)
     f' Stop            = Stop
 
+instance Monad m => Pointed (MachineT m k) where
+  point = repeatedly . yield
+
+-- | An input type that supports merging requests from multiple machines.
+class Appliance k where
+  applied :: Monad m => MachineT m k (a -> b) -> MachineT m k a -> MachineT m k b
+
+instance (Monad m, Appliance k) => Applicative (MachineT m k) where
+  pure = point
+  (<*>) = applied
+
+{-
+-- TODO
+
+instance Appliance (Is i) where
+  applied = appliedTo (Just mempty) (Just mempty) id (flip id) where
+
+-- applied
+appliedTo
+  :: Maybe (Seq i)
+  -> Maybe (i -> MachineT m (Is i) b, MachineT m (Is i) b)
+  -> Either (Seq a) (Seq b)
+  -> (a -> b -> c)
+  -> (b -> a -> c)
+  -> MachineT m (Is i) a
+  -> MachineT m (Is i) b
+  -> MachineT m (Is i) c
+appliedTo mis blocking ss f g m n = MachineT $ runMachineT m >>= \v -> case v of
+  Stop -> return Stop
+  Yield a k -> case ss of
+    Left as ->
+    Right bs -> case viewl bs of
+      b :< bs' -> return $ Yield (f a b) (appliedTo mis bs' f g m n)
+      EmptyL   -> runMachine $ appliedTo mis blocking (singleton a) g f n m
+  Await ak Refl e -> case mis of
+    Nothing -> runMachine $ appliedTo Nothing blocking bs f g e n
+    Just is -> case viewl is of
+      i :< is' -> runMachine $ appliedTo (Just is') blocking bs f g (ak i) m
+      EmptyL -> case blocking of
+        Just (bk, be) ->
+        Nothing -> runMachine $ appliedTo mis (Just (ak, e))
+        | blocking  -> return $ Await (\i -> appliedTo (Just (singleton i)) False f g (ak i) n) Refl $
+        | otherwise ->
+-}
+
 -- | Stop feeding input into model, taking only the effects.
 runT_ :: Monad m => MachineT m k b -> m ()
-runT_ (MachineT m) = m >>= \v -> case v of
+runT_ m = runMachineT m >>= \v -> case v of
   Stop        -> return ()
   Yield _ k   -> runT_ k
   Await _ _ e -> runT_ e
