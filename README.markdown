@@ -3,6 +3,8 @@ machines
 
 [![Build Status](https://secure.travis-ci.org/ekmett/machines.png?branch=master)](http://travis-ci.org/ekmett/machines)
 
+*Ceci n'est pas une pipe*
+
 Machines are demand driven input sources like pipes or conduits, but can support multiple inputs.
 
 You design a `Machine` by writing a `Plan`. You then `construct` the machine.
@@ -19,6 +21,7 @@ answers out.
 There is a lot of flexibility when building a machine in choosing between empowering the machine to run its own monadic effects
 or delegating that responsibility to a custom driver.
 
+A port of this design to scala is available from runarorama/machines
 
 Contact Information
 -------------------
