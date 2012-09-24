@@ -33,6 +33,7 @@ import Control.Monad.IO.Class
 import Control.Monad.State.Class
 import Control.Monad.Reader.Class
 import Control.Monad.Error.Class
+import Control.Monad.Writer.Class
 import Data.Functor.Identity
 import Prelude hiding ((.),id)
 
@@ -117,6 +118,14 @@ instance MonadReader e m => MonadReader e (PlanT k o m) where
   ask = lift ask
   reader = lift . reader
   local f m = PlanT $ \kp ke kr kf -> local f (runPlanT m kp ke kr kf)
+
+instance MonadWriter w m  => MonadWriter w (PlanT k o m) where
+  writer = lift . writer
+  tell   = lift . tell
+
+  listen m = PlanT $ \kp ke kr kf -> runPlanT m ((kp =<<) . listen . return) ke kr kf
+
+  pass m = PlanT $ \kp ke kr kf -> runPlanT m ((kp =<<) . pass . return) ke kr kf
 
 instance MonadError e m => MonadError e (PlanT k o m) where
   throwError = lift . throwError
