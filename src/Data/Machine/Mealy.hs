@@ -56,7 +56,7 @@ unfoldMealy f = go where
 instance Monad (Mealy a) where
   return b = r where r = Mealy (const (b, r))
   m >>= f = Mealy $ \a -> case runMealy m a of
-    (b, m') -> (fst (runMealy (f b) a), snd (runMealy (m' >>= f) a))
+    (b, m') -> (fst (runMealy (f b) a), m' >>= f)
   _ >> n = n
 
 instance Profunctor Mealy where
