@@ -1,8 +1,8 @@
 language: haskell
-# Use this when hackage is down.
-# before_install:
-#   - mkdir -p ~/.cabal
-#   - cp config ~/.cabal/config
-#   - cabal update
 notifications:
-  irc: "irc.freenode.org#haskell-lens"
+  irc:
+    channels:
+      - "irc.freenode.org#haskell-lens"
+    skip_join: true
+    template:
+      - "\x0313machines\x03/\x0306%{branch}\x03 \x0314%{commit}\x03 %{build_url} %{message}"

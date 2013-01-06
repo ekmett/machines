@@ -1,6 +1,6 @@
 name:          machines
 category:      Control, Enumerator
-version:       0.2.1.3
+version:       0.2.2
 license:       BSD3
 cabal-version: >= 1.10
 license-file:  LICENSE
@@ -12,7 +12,7 @@ bug-reports:   http://github.com/ekmett/machines/issues
 copyright:     Copyright (C) 2012 Edward A. Kmett
 synopsis:      Networked stream transducers
 description:   Networked stream transducers
-build-type:    Simple
+build-type:    Custom
 tested-with:   GHC == 7.4.1
 extra-source-files:
   .travis.yml
@@ -30,12 +30,12 @@ source-repository head
 library
   build-depends:
     base         == 4.*,
-    comonad      == 3.0.*,
+    comonad      >= 3,
     containers   >= 0.3   && < 0.6,
-    free         >= 3.1.1 && < 3.4,
-    pointed      == 3.0.*,
-    profunctors  >= 3.0   && < 3.2,
-    semigroups   >= 0.8.3 && < 0.9,
+    free         >= 3.1.1,
+    pointed      >= 3,
+    profunctors  >= 3,
+    semigroups   >= 0.8.3,
     transformers == 0.3.*,
     mtl          >= 2.1.1 && < 2.2
 
@@ -67,6 +67,7 @@ library
 test-suite doctests
   type:    exitcode-stdio-1.0
   main-is: doctests.hs
+  default-language: Haskell2010
   build-depends:
     base == 4.*,
     directory >= 1.0 && < 1.3,
