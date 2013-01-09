@@ -1,3 +1,8 @@
+{-# LANGUAGE CPP #-}
+
+#ifndef MIN_VERSION_profunctors
+#define MIN_VERSION_profunctors(x,y,z) 1
+#endif
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Moore
@@ -34,50 +39,73 @@ data Moore a b = Moore b (a -> Moore a b)
 logMoore :: Monoid m => Moore m m
 logMoore = h mempty where
   h m = Moore m (\a -> h (m <> a))
+{-# INLINE logMoore #-}
 
 -- | Construct a Moore machine from a state valuation and transition function
 unfoldMoore :: (s -> (b, a -> s)) -> s -> Moore a b
 unfoldMoore f = go where
   go s = case f s of
     (b, g) -> Moore b (go . g)
+{-# INLINE unfoldMoore #-}
 
 instance Automaton Moore where
   auto = construct . go where
     go (Moore b f) = do
       yield b
       await >>= go . f
+  {-# INLINE auto #-}
 
 instance Functor (Moore a) where
   fmap f (Moore b g) = Moore (f b) (fmap f . g)
+  {-# INLINE fmap #-}
+  a <$ _ = return a
+  {-# INLINE (<$) #-}
 
 instance Profunctor Moore where
   rmap = fmap
-  lmap f (Moore b g) = Moore b (lmap f . g . f)
+  {-# INLINE rmap #-}
+  lmap f = go where
+    go (Moore b g) = Moore b (go . g . f)
+  {-# INLINE lmap #-}
+#if MIN_VERSION_profunctors(3,1,1)
+  dimap f g = go where
+    go (Moore b h) = Moore (g b) (go . h . f)
+  {-# INLINE dimap #-}
+#endif
 
 instance Applicative (Moore a) where
   pure a = r where r = Moore a (const r)
+  {-# INLINE pure #-}
   Moore f ff <*> Moore a fa  = Moore (f a) (\i -> ff i <*> fa i)
   m <* _ = m
+  {-# INLINE (<*) #-}
   _ *> n = n
+  {-# INLINE (*>) #-}
 
 instance Pointed (Moore a) where
   point a = r where r = Moore a (const r)
+  {-# INLINE point #-}
 
 -- | slow diagonalization
 instance Monad (Moore a) where
   return a = r where r = Moore a (const r)
+  {-# INLINE return #-}
   Moore a k >>= f = case f a of
     Moore b _ -> Moore b (k >=> f)
   _ >> m = m
 
 instance Copointed (Moore a) where
   copoint (Moore b _) = b
+  {-# INLINE copoint #-}
 
 instance Comonad (Moore a) where
   extract (Moore b _) = b
+  {-# INLINE extract #-}
   extend f w@(Moore _ g) = Moore (f w) (extend f . g)
 
 instance ComonadApply (Moore a) where
-  Moore f ff <@> Moore a fa = Moore (f a) (\i -> ff i <*> fa i)
+  Moore f ff <@> Moore a fa = Moore (f a) (\i -> ff i <@> fa i)
   m <@ _ = m
+  {-# INLINE (<@) #-}
   _ @> n = n
+  {-# INLINE (@>) #-}

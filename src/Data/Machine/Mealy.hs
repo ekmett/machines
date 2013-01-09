@@ -49,7 +49,6 @@ instance Applicative (Mealy a) where
   Mealy m <*> Mealy n = Mealy $ \a -> case m a of
     (f, m') -> case n a of
        (b, n') -> (f b, m' <*> n')
-  {-# INLINE (<*>) #-}
   m <* _ = m
   {-# INLINE (<*) #-}
   _ *> n = n
