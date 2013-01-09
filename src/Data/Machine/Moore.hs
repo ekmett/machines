@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 
 #ifndef MIN_VERSION_profunctors
-#define MIN_VERSION_profunctors(x,y,z) 1
+#define MIN_VERSION_profunctors(x,y,z) 0
 #endif
 -----------------------------------------------------------------------------
 -- |

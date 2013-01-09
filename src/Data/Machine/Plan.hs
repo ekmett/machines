@@ -1,7 +1,11 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
+#ifndef MIN_VERSION_mtl
+#define MIN_VERSION_mtl(x,y,z) 0
+#endif
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Plan
@@ -82,45 +86,66 @@ runPlan m kp ke kr kf = runIdentity $ runPlanT m
   (\o (Identity r) -> Identity (ke o r))
   (\f k (Identity r) -> Identity (kr (runIdentity . f) k r))
   (Identity kf)
+{-# INLINE runPlan #-}
 
 instance Functor (PlanT k o m) where
   fmap f (PlanT m) = PlanT $ \k -> m (k . f)
+  {-# INLINE fmap #-}
 
 instance Applicative (PlanT k o m) where
   pure a = PlanT (\kp _ _ _ -> kp a)
+  {-# INLINE pure #-}
   (<*>) = ap
+  {-# INLINE (<*>) #-}
 
 instance Alternative (PlanT k o m) where
   empty = PlanT $ \_ _ _ kf -> kf
+  {-# INLINE empty #-}
   PlanT m <|> PlanT n = PlanT $ \kp ke kr kf -> m kp ke (\ks kir _ -> kr ks kir (n kp ke kr kf)) (n kp ke kr kf)
+  {-# INLINE (<|>) #-}
 
 instance Monad (PlanT k o m) where
   return a = PlanT (\kp _ _ _ -> kp a)
+  {-# INLINE return #-}
   PlanT m >>= f = PlanT (\kp ke kr kf -> m (\a -> runPlanT (f a) kp ke kr kf) ke kr kf)
   fail _ = PlanT (\_ _ _ kf -> kf)
+  {-# INLINE (>>=) #-}
 
 instance MonadPlus (PlanT k o m) where
   mzero = empty
+  {-# INLINE mzero #-}
   mplus = (<|>)
+  {-# INLINE mplus #-}
 
 instance MonadTrans (PlanT k o) where
   lift m = PlanT (\kp _ _ _ -> m >>= kp)
+  {-# INLINE lift #-}
 
 instance MonadIO m => MonadIO (PlanT k o m) where
   liftIO m = PlanT (\kp _ _ _ -> liftIO m >>= kp)
+  {-# INLINE liftIO #-}
 
 instance MonadState s m => MonadState s (PlanT k o m) where
   get = lift get
+  {-# INLINE get #-}
   put = lift . put
+  {-# INLINE put #-}
+#ifdef MIN_VERSION_mtl(2,1,0)
   state f = PlanT $ \kp _ _ _ -> state f >>= kp
+  {-# INLINE state #-}
+#endif
 
 instance MonadReader e m => MonadReader e (PlanT k o m) where
   ask = lift ask
+#ifdef MIN_VERSION_mtl(2,1,0)
   reader = lift . reader
+#endif
   local f m = PlanT $ \kp ke kr kf -> local f (runPlanT m kp ke kr kf)
 
 instance MonadWriter w m  => MonadWriter w (PlanT k o m) where
+#ifdef MIN_VERSION_mtl(2,1,0)
   writer = lift . writer
+#endif
   tell   = lift . tell
 
   listen m = PlanT $ \kp ke kr kf -> runPlanT m ((kp =<<) . listen . return) ke kr kf
