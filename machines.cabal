@@ -31,13 +31,13 @@ library
   build-depends:
     base         == 4.*,
     comonad      >= 3,
-    containers   >= 0.3   && < 0.6,
+    containers   >= 0.3 && < 0.6,
     free         >= 3.1.1,
     pointed      >= 3,
     profunctors  >= 3,
     semigroups   >= 0.8.3,
     transformers == 0.3.*,
-    mtl          >= 2.1.1 && < 2.2
+    mtl          >= 2 && < 2.2
 
   exposed-modules:
     Data.Machine
