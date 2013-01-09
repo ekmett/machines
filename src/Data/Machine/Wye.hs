@@ -83,21 +83,26 @@ wye ma mb m = MachineT $ runMachineT m >>= \v -> case v of
 -- | Precompose a pipe onto the left input of a wye.
 addX :: Monad m => ProcessT m a b -> WyeT m b c d -> WyeT m a c d
 addX p = wye p echo
+{-# INLINE addX #-}
 
 -- | Precompose a pipe onto the right input of a tee.
 addY :: Monad m => ProcessT m b c -> WyeT m a c d -> WyeT m a b d
 addY = wye echo
+{-# INLINE addY #-}
 
 -- | Tie off one input of a tee by connecting it to a known source.
 capX :: Monad m => SourceT m a -> WyeT m a b c -> ProcessT m b c
 capX s t = process (capped Right) (addX s t)
+{-# INLINE capX #-}
 
 -- | Tie off one input of a tee by connecting it to a known source.
 capY :: Monad m => SourceT m b -> WyeT m a b c -> ProcessT m a c
 capY s t = process (capped Left) (addY s t)
+{-# INLINE capY #-}
 
 -- | Natural transformation used by 'capX' and 'capY'
 capped :: (a -> Either a a) -> Y a a b -> a -> b
 capped _ X = id
 capped _ Y = id
 capped f Z = f
+{-# INLINE capped #-}

@@ -60,20 +60,25 @@ tee ma mb m = MachineT $ runMachineT m >>= \v -> case v of
 -- | Precompose a pipe onto the left input of a tee.
 addL :: Monad m => ProcessT m a b -> TeeT m b c d -> TeeT m a c d
 addL p = tee p echo
+{-# INLINE addL #-}
 
 -- | Precompose a pipe onto the right input of a tee.
 addR :: Monad m => ProcessT m b c -> TeeT m a c d -> TeeT m a b d
 addR = tee echo
+{-# INLINE addR #-}
 
 -- | Tie off one input of a tee by connecting it to a known source.
 capL :: Monad m => SourceT m a -> TeeT m a b c -> ProcessT m b c
 capL s t = fit cappedT $ addL s t
+{-# INLINE capL #-}
 
 -- | Tie off one input of a tee by connecting it to a known source.
 capR :: Monad m => SourceT m b -> TeeT m a b c -> ProcessT m a c
 capR s t = fit cappedT $ addR s t
+{-# INLINE capR #-}
 
 -- | Natural transformation used by 'capL' and 'capR'.
 cappedT :: T a a b -> Is a b
 cappedT R = Refl
 cappedT L = Refl
+{-# INLINE cappedT #-}
