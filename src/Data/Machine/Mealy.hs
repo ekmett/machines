@@ -1,4 +1,8 @@
 {-# LANGUAGE CPP #-}
+
+#ifndef MIN_VERSION_profunctors
+#define MIN_VERSION_profunctors(x,y,z) 1
+#endif
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Mealy
