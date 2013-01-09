@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Mealy
@@ -34,35 +35,56 @@ newtype Mealy a b = Mealy { runMealy :: a -> (b, Mealy a b) }
 instance Functor (Mealy a) where
   fmap f (Mealy m) = Mealy $ \a -> case m a of
     (b, n) -> (f b, fmap f n)
+  {-# INLINE fmap #-}
+  b <$ _ = pure b
+  {-# INLINE (<$) #-}
 
 instance Applicative (Mealy a) where
   pure b = r where r = Mealy (const (b, r))
+  {-# INLINE pure #-}
   Mealy m <*> Mealy n = Mealy $ \a -> case m a of
     (f, m') -> case n a of
        (b, n') -> (f b, m' <*> n')
+  {-# INLINE (<*>) #-}
   m <* _ = m
+  {-# INLINE (<*) #-}
   _ *> n = n
+  {-# INLINE (*>) #-}
 
 instance Pointed (Mealy a) where
   point b = r where r = Mealy (const (b, r))
+  {-# INLINE point #-}
 
 -- | A 'Mealy' machine modeled with explicit state.
 unfoldMealy :: (s -> a -> (b, s)) -> s -> Mealy a b
 unfoldMealy f = go where
   go s = Mealy $ \a -> case f s a of
     (b, t) -> (b, go t)
+{-# INLINE unfoldMealy #-}
 
 -- | slow diagonalization
 instance Monad (Mealy a) where
   return b = r where r = Mealy (const (b, r))
+  {-# INLINE return #-}
   m >>= f = Mealy $ \a -> case runMealy m a of
     (b, m') -> (fst (runMealy (f b) a), m' >>= f)
+  {-# INLINE (>>=) #-}
   _ >> n = n
+  {-# INLINE (>>) #-}
 
 instance Profunctor Mealy where
   rmap = fmap
-  lmap f (Mealy m) = Mealy $ \a -> case m (f a) of
-    (b, n) -> (b, lmap f n)
+  {-# INLINE rmap #-}
+  lmap f = go where
+    go (Mealy m) = Mealy $ \a -> case m (f a) of
+      (b, n) -> (b, go n)
+  {-# INLINE lmap #-}
+#if MIN_VERSION_profunctors(3,1,1)
+  dimap f g = go where
+    go (Mealy m) = Mealy $ \a -> case m (f a) of
+      (b, n) -> (g b, go n)
+  {-# INLINE dimap #-}
+#endif
 
 instance Automaton Mealy where
   auto = construct . go where
@@ -70,6 +92,7 @@ instance Automaton Mealy where
       (b, m) -> do
          yield b
          go m
+  {-# INLINE auto #-}
 
 instance Category Mealy where
   id = Mealy (\a -> (a, id))
@@ -79,6 +102,7 @@ instance Category Mealy where
 
 instance Arrow Mealy where
   arr f = r where r = Mealy (\a -> (f a, r))
+  {-# INLINE arr #-}
   first (Mealy m) = Mealy $ \(a,c) -> case m a of
     (b, n) -> ((b, c), first n)
 
@@ -113,8 +137,10 @@ driveMealy m xs z = case viewl xs of
 logMealy :: Semigroup a => Mealy a a
 logMealy = Mealy $ \a -> (a, h a) where
   h a = Mealy $ \b -> let c = a <> b in (c, h c)
+{-# INLINE logMealy #-}
 
 instance ArrowApply Mealy where
   app = go Seq.empty where
     go xs = Mealy $ \(m,x) -> case driveMealy m xs x of
       (c, _) -> (c, go (xs |> x))
+  {-# INLINE app #-}
