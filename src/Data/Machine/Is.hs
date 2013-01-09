@@ -26,17 +26,23 @@ instance Show (Is a b) where
 
 instance Eq (Is a b) where
   Refl == Refl = True
+  {-# INLINE (==) #-}
 
 instance Ord (Is a b) where
   Refl `compare` Refl = EQ
+  {-# INLINE compare #-}
 
 instance (a ~ b) => Monoid (Is a b) where
   mempty = Refl
+  {-# INLINE mempty #-}
   mappend Refl Refl = Refl
+  {-# INLINE mappend #-}
 
 instance (a ~ b) => Read (Is a b) where
   readsPrec d = readParen (d > 10) (\r -> [(Refl,s) | ("Refl",s) <- lex r ])
 
 instance Category Is where
   id = Refl
+  {-# INLINE id #-}
   Refl . Refl = Refl
+  {-# INLINE (.) #-}
