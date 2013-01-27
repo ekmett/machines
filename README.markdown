@@ -23,6 +23,8 @@ or delegating that responsibility to a custom driver.
 
 A port of this design to scala is available from runarorama/machines
 
+Runar's slides are also available from https://dl.dropbox.com/u/4588997/Machines.pdf
+
 Contact Information
 -------------------
 
