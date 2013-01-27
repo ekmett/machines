@@ -1,6 +1,6 @@
 name:          machines
 category:      Control, Enumerator
-version:       0.2.3
+version:       0.2.3.1
 license:       BSD3
 cabal-version: >= 1.10
 license-file:  LICENSE
@@ -11,7 +11,11 @@ homepage:      http://github.com/ekmett/machines/
 bug-reports:   http://github.com/ekmett/machines/issues
 copyright:     Copyright (C) 2012 Edward A. Kmett
 synopsis:      Networked stream transducers
-description:   Networked stream transducers
+description:
+  Networked stream transducers
+  .
+  Rúnar Bjarnason's talk on machines can be downloaded from:
+  <https://dl.dropbox.com/u/4588997/Machines.pdf>
 build-type:    Custom
 tested-with:   GHC == 7.4.1
 extra-source-files:
