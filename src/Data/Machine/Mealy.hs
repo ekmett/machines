@@ -129,6 +129,15 @@ instance ArrowChoice Mealy where
     Right b -> case runMealy n b of
       (d, n') -> (d, m ||| n')
 
+#if MIN_VERSION_profunctors(3,2,0)
+instance Strong Mealy where
+  first' = first
+
+instance Choice Mealy where
+  left' = left
+  right' = right
+#endif
+
 -- | Fast forward a mealy machine forward
 driveMealy :: Mealy a b -> Seq a -> a -> (b, Mealy a b)
 driveMealy m xs z = case viewl xs of
