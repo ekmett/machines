@@ -8,41 +8,42 @@
 </head>
 <body>
 <pre><a name="line-1"></a><span class='hs-comment'>{-# LANGUAGE GADTs #-}</span>
-<a name="line-2"></a><span class='hs-comment'>-----------------------------------------------------------------------------</span>
-<a name="line-3"></a><span class='hs-comment'>-- |</span>
-<a name="line-4"></a><span class='hs-comment'>-- Module      :  Data.Machine.Unread</span>
-<a name="line-5"></a><span class='hs-comment'>-- Copyright   :  (C) 2012 Edward Kmett</span>
-<a name="line-6"></a><span class='hs-comment'>-- License     :  BSD-style (see the file LICENSE)</span>
-<a name="line-7"></a><span class='hs-comment'>--</span>
-<a name="line-8"></a><span class='hs-comment'>-- Maintainer  :  Edward Kmett &lt;ekmett@gmail.com&gt;</span>
-<a name="line-9"></a><span class='hs-comment'>-- Stability   :  provisional</span>
-<a name="line-10"></a><span class='hs-comment'>-- Portability :  GADTs</span>
-<a name="line-11"></a><span class='hs-comment'>--</span>
-<a name="line-12"></a><span class='hs-comment'>----------------------------------------------------------------------------</span>
-<a name="line-13"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Unread</span>
-<a name="line-14"></a>  <span class='hs-layout'>(</span> <span class='hs-conid'>Unread</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span>
-<a name="line-15"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>peek</span>
-<a name="line-16"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>unread</span>
-<a name="line-17"></a>  <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
-<a name="line-18"></a>
-<a name="line-19"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Plan</span>
-<a name="line-20"></a>
-<a name="line-21"></a><a name="Unread"></a><span class='hs-comment'>-- | This is a simple process type that knows how to push back input.</span>
-<a name="line-22"></a><a name="Unread"></a><span class='hs-keyword'>data</span> <span class='hs-conid'>Unread</span> <span class='hs-varid'>a</span> <span class='hs-varid'>r</span> <span class='hs-keyword'>where</span>
-<a name="line-23"></a>  <span class='hs-conid'>Unread</span> <span class='hs-keyglyph'>::</span> <span class='hs-varid'>a</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Unread</span> <span class='hs-varid'>a</span> <span class='hs-conid'>()</span>
-<a name="line-24"></a>  <span class='hs-conid'>Read</span>   <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Unread</span> <span class='hs-varid'>a</span> <span class='hs-varid'>a</span>
-<a name="line-25"></a>
-<a name="line-26"></a><a name="peek"></a><span class='hs-comment'>-- | Peek at the next value in the input stream without consuming it</span>
-<a name="line-27"></a><span class='hs-definition'>peek</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Plan</span> <span class='hs-conid'>Unread</span> <span class='hs-varid'>a</span> <span class='hs-varid'>b</span> <span class='hs-varid'>a</span>
-<a name="line-28"></a><span class='hs-definition'>peek</span> <span class='hs-keyglyph'>=</span> <span class='hs-keyword'>do</span>
-<a name="line-29"></a>  <span class='hs-varid'>a</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-varid'>awaits</span> <span class='hs-conid'>Read</span>
-<a name="line-30"></a>  <span class='hs-varid'>awaits</span> <span class='hs-layout'>(</span><span class='hs-conid'>Unread</span> <span class='hs-varid'>a</span><span class='hs-layout'>)</span>
-<a name="line-31"></a>  <span class='hs-varid'>return</span> <span class='hs-varid'>a</span>
-<a name="line-32"></a>
-<a name="line-33"></a><a name="unread"></a><span class='hs-comment'>-- | Push back into the input stream</span>
-<a name="line-34"></a><span class='hs-definition'>unread</span> <span class='hs-keyglyph'>::</span> <span class='hs-varid'>a</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Plan</span> <span class='hs-conid'>Unread</span> <span class='hs-varid'>a</span> <span class='hs-varid'>b</span> <span class='hs-conid'>()</span>
-<a name="line-35"></a><span class='hs-definition'>unread</span> <span class='hs-varid'>a</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>awaits</span> <span class='hs-layout'>(</span><span class='hs-conid'>Unread</span> <span class='hs-varid'>a</span><span class='hs-layout'>)</span>
-<a name="line-36"></a>
-<a name="line-37"></a><span class='hs-comment'>-- TODO: make this a class?</span>
+<a name="line-2"></a><span class='hs-comment'>{-# LANGUAGE Rank2Types #-}</span>
+<a name="line-3"></a><span class='hs-comment'>-----------------------------------------------------------------------------</span>
+<a name="line-4"></a><span class='hs-comment'>-- |</span>
+<a name="line-5"></a><span class='hs-comment'>-- Module      :  Data.Machine.Unread</span>
+<a name="line-6"></a><span class='hs-comment'>-- Copyright   :  (C) 2012 Edward Kmett</span>
+<a name="line-7"></a><span class='hs-comment'>-- License     :  BSD-style (see the file LICENSE)</span>
+<a name="line-8"></a><span class='hs-comment'>--</span>
+<a name="line-9"></a><span class='hs-comment'>-- Maintainer  :  Edward Kmett &lt;ekmett@gmail.com&gt;</span>
+<a name="line-10"></a><span class='hs-comment'>-- Stability   :  provisional</span>
+<a name="line-11"></a><span class='hs-comment'>-- Portability :  GADTs</span>
+<a name="line-12"></a><span class='hs-comment'>--</span>
+<a name="line-13"></a><span class='hs-comment'>----------------------------------------------------------------------------</span>
+<a name="line-14"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Unread</span>
+<a name="line-15"></a>  <span class='hs-layout'>(</span> <span class='hs-conid'>Unread</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span>
+<a name="line-16"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>peek</span>
+<a name="line-17"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>unread</span>
+<a name="line-18"></a>  <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
+<a name="line-19"></a>
+<a name="line-20"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Machine</span><span class='hs-varop'>.</span><span class='hs-conid'>Plan</span>
+<a name="line-21"></a>
+<a name="line-22"></a><a name="Unread"></a><span class='hs-comment'>-- | This is a simple process type that knows how to push back input.</span>
+<a name="line-23"></a><a name="Unread"></a><span class='hs-keyword'>data</span> <span class='hs-conid'>Unread</span> <span class='hs-varid'>a</span> <span class='hs-varid'>r</span> <span class='hs-keyword'>where</span>
+<a name="line-24"></a>  <span class='hs-conid'>Unread</span> <span class='hs-keyglyph'>::</span> <span class='hs-varid'>a</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Unread</span> <span class='hs-varid'>a</span> <span class='hs-conid'>()</span>
+<a name="line-25"></a>  <span class='hs-conid'>Read</span>   <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Unread</span> <span class='hs-varid'>a</span> <span class='hs-varid'>a</span>
+<a name="line-26"></a>
+<a name="line-27"></a><a name="peek"></a><span class='hs-comment'>-- | Peek at the next value in the input stream without consuming it</span>
+<a name="line-28"></a><span class='hs-definition'>peek</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Plan</span> <span class='hs-varid'>b</span> <span class='hs-layout'>(</span><span class='hs-conid'>Unread</span> <span class='hs-varid'>a</span><span class='hs-layout'>)</span> <span class='hs-varid'>a</span>
+<a name="line-29"></a><span class='hs-definition'>peek</span> <span class='hs-keyglyph'>=</span> <span class='hs-keyword'>do</span>
+<a name="line-30"></a>  <span class='hs-varid'>a</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-varid'>awaits</span> <span class='hs-conid'>Read</span>
+<a name="line-31"></a>  <span class='hs-varid'>awaits</span> <span class='hs-layout'>(</span><span class='hs-conid'>Unread</span> <span class='hs-varid'>a</span><span class='hs-layout'>)</span>
+<a name="line-32"></a>  <span class='hs-varid'>return</span> <span class='hs-varid'>a</span>
+<a name="line-33"></a>
+<a name="line-34"></a><a name="unread"></a><span class='hs-comment'>-- | Push back into the input stream</span>
+<a name="line-35"></a><span class='hs-definition'>unread</span> <span class='hs-keyglyph'>::</span> <span class='hs-varid'>a</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Plan</span> <span class='hs-varid'>b</span> <span class='hs-layout'>(</span><span class='hs-conid'>Unread</span> <span class='hs-varid'>a</span><span class='hs-layout'>)</span> <span class='hs-conid'>()</span>
+<a name="line-36"></a><span class='hs-definition'>unread</span> <span class='hs-varid'>a</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>awaits</span> <span class='hs-layout'>(</span><span class='hs-conid'>Unread</span> <span class='hs-varid'>a</span><span class='hs-layout'>)</span>
+<a name="line-37"></a>
+<a name="line-38"></a><span class='hs-comment'>-- TODO: make this a class?</span>
 </pre></body>
 </html>
