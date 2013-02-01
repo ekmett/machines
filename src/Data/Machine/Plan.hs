@@ -105,7 +105,7 @@ instance MonadState s m => MonadState s (Plan o m) where
   {-# INLINE get #-}
   put = lift . put
   {-# INLINE put #-}
-#ifdef MIN_VERSION_mtl(2,1,0)
+#if MIN_VERSION_mtl(2,1,0)
   state = lift . state
   {-# INLINE state #-}
 #endif
@@ -113,7 +113,7 @@ instance MonadState s m => MonadState s (Plan o m) where
 instance MonadReader e m => MonadReader e (Plan o m) where
   ask = lift ask
   {-# INLINE ask #-}
-#ifdef MIN_VERSION_mtl(2,1,0)
+#if MIN_VERSION_mtl(2,1,0)
   reader = lift . reader
   {-# INLINE reader #-}
 #endif
