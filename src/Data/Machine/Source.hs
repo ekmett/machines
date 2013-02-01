@@ -14,7 +14,7 @@
 module Data.Machine.Source
   (
   -- * Sources
-    Source, SourceT
+    Source
   , source
   , repeated
   , cycled
@@ -33,10 +33,7 @@ import Prelude hiding ((.),id)
 -------------------------------------------------------------------------------
 
 -- | A 'Source' never reads from its inputs.
-type Source b = forall k. Machine k b
-
--- | A 'SourceT' never reads from its inputs, but may have monadic side-effects.
-type SourceT m b = forall k. MachineT m k b
+type Source b = forall m. Machine m b
 
 -- | Repeat the same value, over and over.
 repeated :: o -> Source o

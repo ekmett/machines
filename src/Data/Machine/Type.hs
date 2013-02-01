@@ -15,187 +15,136 @@
 module Data.Machine.Type
   (
   -- * Machines
-    MachineT(..)
-  , Step(..)
-  , Machine
-  , runT_
-  , runT
+    Machine(..)
+  , run_
   , run
-  , runMachine
-  , encased
-
   -- ** Building machines from plans
   , construct
   , repeatedly
   , before
---  , sink
-
   -- * Reshaping machines
   , fit
   , pass
-
-  , stopped
-
-  -- * Applicative Machines
-  , Appliance(..)
   ) where
 
 import Control.Applicative
 import Control.Category
-import Control.Monad (liftM)
+import Control.Monad
 import Data.Foldable
-import Data.Functor.Identity
 import Data.Machine.Plan
-import Data.Monoid
 import Data.Pointed
+import Data.Semigroup
 import Prelude hiding ((.),id)
 
 -------------------------------------------------------------------------------
 -- Transduction Machines
 -------------------------------------------------------------------------------
 
--- | This is the base functor for a 'Machine' or 'MachineT'.
---
--- Note: A 'Machine' is usually constructed from 'Plan', so it does not need to be CPS'd.
-data Step k o r
-  = Stop
-  | Yield o r
-  | forall t. Await (t -> r) (k t) r
-
-instance Functor (Step k o) where
-  fmap _ Stop = Stop
-  fmap f (Yield o k) = Yield o (f k)
-  fmap f (Await g kg fg) = Await (f . g) kg (f fg)
-
--- | A 'MachineT' reads from a number of inputs and may yield results before stopping
--- with monadic side-effects.
-newtype MachineT m k o = MachineT { runMachineT :: m (Step k o (MachineT m k o)) }
-
 -- | A 'Machine' reads from a number of inputs and may yield results before stopping.
 --
--- A 'Machine' can be used as a @'MachineT' m@ for any @'Monad' m@.
-type Machine k o = forall m. Monad m => MachineT m k o
+-- Note: A 'Machine' is usually constructed from 'Plan', so it does not need to be CPS'd.
+--
+-- (Now that we have a 'Monad' of our own, this is no longer completely true.)
+data Machine m a
+  = Yield a (Machine m a)
+  | forall i. Await (i -> Machine m a) (m i) (Machine m a)
+  | Stop
 
--- | @'runMachine' = 'runIdentity' . 'runMachineT'@
-runMachine :: MachineT Identity k o -> Step k o (MachineT Identity k o)
-runMachine = runIdentity . runMachineT
+instance Functor (Machine m) where
+  fmap f (Yield o k) = Yield (f o) (fmap f k)
+  fmap f (Await ka m kf) = Await (fmap f . ka) m (fmap f kf)
+  fmap _ Stop = Stop
+  {-# INLINEABLE fmap #-}
 
--- | Pack a 'Step' of a 'Machine' into a 'Machine'.
-encased :: Monad m => Step k o (MachineT m k o) -> MachineT m k o
-encased = MachineT . return
+instance Applicative (Machine m) where
+  pure a = Yield a Stop
+  {-# INLINE pure #-}
 
-instance Monad m => Functor (MachineT m k) where
-  fmap f (MachineT m) = MachineT (liftM f' m) where
-    f' (Yield o xs)    = Yield (f o) (f <$> xs)
-    f' (Await k kir e) = Await (fmap f . k) kir (f <$> e)
-    f' Stop            = Stop
+  (<*>) = ap
+  {-# INLINE (<*>) #-}
 
-instance Monad m => Pointed (MachineT m k) where
-  point = repeatedly . yield
+instance Alternative (Machine m) where
+  Stop <|> n          = n
+  Yield a m <|> n     = Yield a (m <> n)
+  Await ka k kf <|> n = Await (\i -> ka i <|> n) k (kf <|> n)
+  {-# INLINE (<|>) #-}
+  empty = Stop
+  {-# INLINE empty #-}
 
--- | An input type that supports merging requests from multiple machines.
-class Appliance k where
-  applied :: Monad m => MachineT m k (a -> b) -> MachineT m k a -> MachineT m k b
+instance Monad (Machine m) where
+  return a = Yield a Stop
+  {-# INLINE return #-}
+  m0 >>= k = go m0 where
+    go Stop            = Stop
+    go (Yield a m)     = mappend (k a) (go m)
+    go (Await ka m kf) = Await (go . ka) m (go kf)
+  {-# INLINE (>>=) #-}
 
-instance (Monad m, Appliance k) => Applicative (MachineT m k) where
-  pure = point
-  (<*>) = applied
+instance MonadPlus (Machine m) where
+  mplus = (<|>)
+  {-# INLINE mplus #-}
+  mzero = empty
+  {-# INLINE mzero #-}
 
-{-
--- TODO
+instance Pointed (Machine m) where
+  point a = Yield a Stop
+  {-# INLINE point #-}
 
-instance Appliance (Is i) where
-  applied = appliedTo (Just mempty) (Just mempty) id (flip id) where
+instance Semigroup (Machine m a) where
+  (<>) = (<|>)
+  {-# INLINE (<>) #-}
 
--- applied
-appliedTo
-  :: Maybe (Seq i)
-  -> Maybe (i -> MachineT m (Is i) b, MachineT m (Is i) b)
-  -> Either (Seq a) (Seq b)
-  -> (a -> b -> c)
-  -> (b -> a -> c)
-  -> MachineT m (Is i) a
-  -> MachineT m (Is i) b
-  -> MachineT m (Is i) c
-appliedTo mis blocking ss f g m n = MachineT $ runMachineT m >>= \v -> case v of
-  Stop -> return Stop
-  Yield a k -> case ss of
-    Left as ->
-    Right bs -> case viewl bs of
-      b :< bs' -> return $ Yield (f a b) (appliedTo mis bs' f g m n)
-      EmptyL   -> runMachine $ appliedTo mis blocking (singleton a) g f n m
-  Await ak Refl e -> case mis of
-    Nothing -> runMachine $ appliedTo Nothing blocking bs f g e n
-    Just is -> case viewl is of
-      i :< is' -> runMachine $ appliedTo (Just is') blocking bs f g (ak i) m
-      EmptyL -> case blocking of
-        Just (bk, be) ->
-        Nothing -> runMachine $ appliedTo mis (Just (ak, e))
-        | blocking  -> return $ Await (\i -> appliedTo (Just (singleton i)) False f g (ak i) n) Refl $
-        | otherwise ->
--}
+instance Monoid (Machine m a) where
+  mempty = Stop
+  {-# INLINE mempty #-}
+  mappend = (<|>)
+  {-# INLINE mappend #-}
 
--- | Stop feeding input into model, taking only the effects.
-runT_ :: Monad m => MachineT m k b -> m ()
-runT_ m = runMachineT m >>= \v -> case v of
-  Stop        -> return ()
-  Yield _ k   -> runT_ k
-  Await _ _ e -> runT_ e
+instance Foldable (Machine m) where
+  foldMap _ Stop          = mempty
+  foldMap f (Yield o k)   = f o `mappend` foldMap f k
+  foldMap f (Await _ _ e) = foldMap f e
+  {-# INLINEABLE foldMap #-}
 
--- | Stop feeding input into model and extract an answer
-runT :: Monad m => MachineT m k b -> m [b]
-runT (MachineT m) = m >>= \v -> case v of
-  Stop        -> return []
-  Yield o k   -> liftM (o:) (runT k)
-  Await _ _ e -> runT e
+run_ :: MonadPlus m => Machine m b -> m ()
+run_ Stop            = return ()
+run_ (Yield _ k)     = run_ k
+run_ (Await ks m ke) = mplus (m >>= run_ . ks) (run_ ke)
+{-# INLINEABLE run_ #-}
 
--- | Run a pure machine and extract an answer.
-run :: MachineT Identity k b -> [b]
-run = runIdentity . runT
-
--- | This permits toList to be used on a Machine.
-instance (m ~ Identity) => Foldable (MachineT m k) where
-  foldMap f (MachineT (Identity m)) = go m where
-    go Stop = mempty
-    go (Yield o k) = f o `mappend` foldMap f k
-    go (Await _ _ fg) = foldMap f fg
+run :: MonadPlus m => Machine m b -> m [b]
+run Stop            = return []
+run (Yield o m)     = (o:) `liftM` run m
+run (Await ks m ke) = mplus (m >>= run . ks) (run ke)
+{-# INLINEABLE run #-}
 
 -- |
 -- Connect different kinds of machines.
 --
 -- @'fit' 'id' = 'id'@
-fit :: Monad m => (forall a. k a -> k' a) -> MachineT m k o -> MachineT m k' o
-fit f (MachineT m) = MachineT (liftM f' m) where
-  f' (Yield o k)     = Yield o (fit f k)
-  f' Stop            = Stop
-  f' (Await g kir h) = Await (fit f . g) (f kir) (fit f h)
+fit :: (forall a. m a -> n a) -> Machine m o -> Machine n o
+fit f = go where
+  go (Yield o k)     = Yield o (go k)
+  go Stop            = Stop
+  go (Await g kir h) = Await (go . g) (f kir) (go h)
+{-# INLINE fit #-}
 
 -- | Compile a machine to a model.
-construct :: Monad m => PlanT k o m a -> MachineT m k o
-construct m = MachineT $ runPlanT m
-  (const (return Stop))
-  (\o k -> return (Yield o (MachineT k)))
-  (\f k g -> return (Await (MachineT . f) k (MachineT g)))
-  (return Stop)
+construct :: Plan o m a -> Machine m o
+construct (Plan m) = m (const Stop) Yield Await Stop
+{-# INLINE construct #-}
 
 -- | Generates a model that runs a machine until it stops, then start it up again.
 --
 -- @'repeatedly' m = 'construct' ('Control.Monad.forever' m)@
-repeatedly :: Monad m => PlanT k o m a -> MachineT m k o
-repeatedly m = r where
-  r = MachineT $ runPlanT m
-    (const (runMachineT r))
-    (\o k -> return (Yield o (MachineT k)))
-    (\f k g -> return (Await (MachineT . f) k (MachineT g)))
-    (return Stop)
+repeatedly :: Plan o m a -> Machine m o
+repeatedly (Plan m) = r where r = m (const r) Yield Await Stop
+{-# INLINE repeatedly #-}
 
 -- | Evaluate a machine until it stops, and then yield answers according to the supplied model.
-before :: Monad m => MachineT m k o -> PlanT k o m a -> MachineT m k o
-before (MachineT n) m = MachineT $ runPlanT m
-  (const n)
-  (\o k -> return (Yield o (MachineT k)))
-  (\f k g -> return (Await (MachineT . f) k (MachineT g)))
-  (return Stop)
+before :: Machine m o -> Plan o m a -> Machine m o
+before n p = n <|> construct p
+{-# INLINE before #-}
 
 -- | Given a handle, ignore all other inputs and just stream input from that handle.
 --
@@ -207,25 +156,8 @@ before (MachineT n) m = MachineT $ runPlanT m
 -- 'pass' 'Data.Machine.Wye.Y'  :: 'Data.Machine.Wye.Wye' a b b
 -- 'pass' 'Data.Machine.Wye.Z'  :: 'Data.Machine.Wye.Wye' a b (Either a b)
 -- @
-pass :: k o -> Machine k o
+pass :: m o -> Machine m o
 pass k = repeatedly $ do
   a <- awaits k
   yield a
-
--- | This is a stopped 'Machine'
-stopped :: Machine k b
-stopped = encased Stop
-
--------------------------------------------------------------------------------
--- Sink
--------------------------------------------------------------------------------
-
-{-
--- |
--- A Sink in this model is a 'Data.Machine.Process.Process'
--- (or 'Data.Machine.Tee.Tee', etc) that produces a single answer.
---
--- \"Is that your final answer?\"
-sink :: Monad m => (forall o. PlanT k o m a) -> MachineT m k a
-sink m = runPlanT m (\a -> Yield a Stop) id (Await id) Stop
--}
+{-# INLINE pass #-}

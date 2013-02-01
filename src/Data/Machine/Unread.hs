@@ -25,14 +25,14 @@ data Unread a r where
   Read   :: Unread a a
 
 -- | Peek at the next value in the input stream without consuming it
-peek :: Plan (Unread a) b a
+peek :: Plan b (Unread a) a
 peek = do
   a <- awaits Read
   awaits (Unread a)
   return a
 
 -- | Push back into the input stream
-unread :: a -> Plan (Unread a) b ()
+unread :: a -> Plan b (Unread a) ()
 unread a = awaits (Unread a)
 
 -- TODO: make this a class?

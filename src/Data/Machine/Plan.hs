@@ -9,23 +9,20 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Plan
--- Copyright   :  (C) 2012 Edward Kmett, Rúnar Bjarnason
+-- Copyright   :  (C) 2012-2013 Edward Kmett, Rúnar Bjarnason
 -- License     :  BSD-style (see the file LICENSE)
 --
 -- Maintainer  :  Edward Kmett <ekmett@gmail.com>
 -- Stability   :  provisional
--- Portability :  Rank-N Types, MPTCs
+-- Portability :  MPTCs
 --
 ----------------------------------------------------------------------------
 module Data.Machine.Plan
   (
   -- * Plans
-    Plan
-  , runPlan
-  , PlanT(..)
+    Plan(..)
   , yield
   , await
-  , stop
   , awaits
   ) where
 
@@ -36,146 +33,112 @@ import Control.Monad.Trans.Class
 import Control.Monad.IO.Class
 import Control.Monad.State.Class
 import Control.Monad.Reader.Class
-import Control.Monad.Error.Class
-import Control.Monad.Writer.Class
-import Data.Functor.Identity
 import Prelude hiding ((.),id)
 
 -------------------------------------------------------------------------------
 -- Plans
 -------------------------------------------------------------------------------
 
--- | You can 'construct' a 'Plan' (or 'PlanT'), turning it into a
--- 'Data.Machine.Type.Machine' (or 'Data.Machine.Type.MachineT').
+-- | You can 'construct' a 'Plan', turning it into a
+-- 'Data.Machine.Type.Machine'.
 --
-newtype PlanT k o m a = PlanT
-  { runPlanT :: forall r.
-      (a -> m r) ->                                     -- Done a
-      (o -> m r -> m r) ->                              -- Yield o (Plan k o a)
-      (forall z. (z -> m r) -> k z -> m r -> m r) ->  -- forall z. Await (z -> Plan o a) (k z) (Plan k o a)
-      m r ->                                            -- Fail
-      m r
+newtype Plan o m a = Plan
+  { runPlan :: forall r.
+      (a -> r) ->                               -- Done a
+      (o -> r -> r) ->                          -- Yield o (Plan o m a)
+      (forall z. (z -> r) -> m z -> r -> r) ->  -- forall z. Await (z -> Plan o m a) (m z) (Plan o m a)
+      r ->                                      -- Fail
+      r
   }
 
--- | A @'Plan' k o a@ is a specification for a pure 'Machine', that reads inputs selected by @k@
--- with types based on @i@, writes values of type @o@, and has intermediate results of type @a@.
---
--- A @'PlanT' k o a@ can be used as a @'PlanT' k o m a@ for any @'Monad' m@.
+-- | A @'Plan' o m a@ is a specification for a pure 'Machine', that can perform actions in @m@, which
+-- writes values of type @o@, and has intermediate results of type @a@.
 --
 -- It is perhaps easier to think of 'Plan' in its un-cps'ed form, which would
 -- look like:
---
--- @
--- data 'Plan' k o a
---   = Done a
---   | Yield o (Plan k o a)
---   | forall z. Await (z -> Plan k o a) (k z) (Plan k o a)
---   | Fail
--- @
-type Plan k o a = forall m. PlanT k o m a
 
--- | Deconstruct a 'Plan' without reference to a 'Monad'.
-runPlan :: PlanT k o Identity a
-        -> (a -> r)
-        -> (o -> r -> r)
-        -> (forall z. (z -> r) -> k z -> r -> r)
-        -> r
-        -> r
-runPlan m kp ke kr kf = runIdentity $ runPlanT m
-  (Identity . kp)
-  (\o (Identity r) -> Identity (ke o r))
-  (\f k (Identity r) -> Identity (kr (runIdentity . f) k r))
-  (Identity kf)
-{-# INLINE runPlan #-}
-
-instance Functor (PlanT k o m) where
-  fmap f (PlanT m) = PlanT $ \k -> m (k . f)
+instance Functor (Plan o m) where
+  fmap f (Plan m) = Plan $ \k -> m (k . f)
   {-# INLINE fmap #-}
 
-instance Applicative (PlanT k o m) where
-  pure a = PlanT (\kp _ _ _ -> kp a)
+instance Applicative (Plan o m) where
+  pure a = Plan $ \kp _ _ _ -> kp a
   {-# INLINE pure #-}
   (<*>) = ap
   {-# INLINE (<*>) #-}
 
-instance Alternative (PlanT k o m) where
-  empty = PlanT $ \_ _ _ kf -> kf
+instance Alternative (Plan o m) where
+  empty = Plan $ \_ _ _ kf -> kf
   {-# INLINE empty #-}
-  PlanT m <|> PlanT n = PlanT $ \kp ke kr kf -> m kp ke (\ks kir _ -> kr ks kir (n kp ke kr kf)) (n kp ke kr kf)
+  Plan m <|> Plan n = Plan $ \kp ke kr kf -> m kp ke (\ks kir _ -> kr ks kir (n kp ke kr kf)) (n kp ke kr kf)
   {-# INLINE (<|>) #-}
 
-instance Monad (PlanT k o m) where
-  return a = PlanT (\kp _ _ _ -> kp a)
+instance Monad (Plan o m) where
+  return a = Plan $ \kp _ _ _ -> kp a
   {-# INLINE return #-}
-  PlanT m >>= f = PlanT (\kp ke kr kf -> m (\a -> runPlanT (f a) kp ke kr kf) ke kr kf)
-  fail _ = PlanT (\_ _ _ kf -> kf)
+  Plan m >>= f = Plan $ \kp ke kr kf -> m (\a -> runPlan (f a) kp ke kr kf) ke kr kf
+  fail _ = Plan $ \_ _ _ kf -> kf
   {-# INLINE (>>=) #-}
 
-instance MonadPlus (PlanT k o m) where
+instance MonadPlus (Plan o m) where
   mzero = empty
   {-# INLINE mzero #-}
   mplus = (<|>)
   {-# INLINE mplus #-}
 
-instance MonadTrans (PlanT k o) where
-  lift m = PlanT (\kp _ _ _ -> m >>= kp)
+-- |
+-- @
+-- lift 'L'  :: 'Plan' o ('T' a b) a
+-- lift 'R'  :: 'Plan' o ('T' a b) b
+-- lift 'id' :: 'Plan' oo ('Data.Machine.Is.Is' i) i
+-- @
+instance MonadTrans (Plan o) where
+  lift m = Plan $ \kp _ ka kf -> ka kp m kf
   {-# INLINE lift #-}
 
-instance MonadIO m => MonadIO (PlanT k o m) where
-  liftIO m = PlanT (\kp _ _ _ -> liftIO m >>= kp)
+instance MonadIO m => MonadIO (Plan o m) where
+  liftIO m = Plan $ \kp _ ka kf -> ka kp (liftIO m) kf
   {-# INLINE liftIO #-}
 
-instance MonadState s m => MonadState s (PlanT k o m) where
+instance MonadState s m => MonadState s (Plan o m) where
   get = lift get
   {-# INLINE get #-}
   put = lift . put
   {-# INLINE put #-}
 #ifdef MIN_VERSION_mtl(2,1,0)
-  state f = PlanT $ \kp _ _ _ -> state f >>= kp
+  state = lift . state
   {-# INLINE state #-}
 #endif
 
-instance MonadReader e m => MonadReader e (PlanT k o m) where
+instance MonadReader e m => MonadReader e (Plan o m) where
   ask = lift ask
+  {-# INLINE ask #-}
 #ifdef MIN_VERSION_mtl(2,1,0)
   reader = lift . reader
+  {-# INLINE reader #-}
 #endif
-  local f m = PlanT $ \kp ke kr kf -> local f (runPlanT m kp ke kr kf)
-
-instance MonadWriter w m  => MonadWriter w (PlanT k o m) where
-#ifdef MIN_VERSION_mtl(2,1,0)
-  writer = lift . writer
-#endif
-  tell   = lift . tell
-
-  listen m = PlanT $ \kp ke kr kf -> runPlanT m ((kp =<<) . listen . return) ke kr kf
-
-  pass m = PlanT $ \kp ke kr kf -> runPlanT m ((kp =<<) . pass . return) ke kr kf
-
-instance MonadError e m => MonadError e (PlanT k o m) where
-  throwError = lift . throwError
-  catchError m k = PlanT $ \kp ke kr kf -> runPlanT m kp ke kr kf `catchError` \e -> runPlanT (k e) kp ke kr kf
+  local f (Plan m) = Plan $ \kp ke kr -> m kp ke $ \ar -> kr ar . local f
+  {-# INLINE local #-}
 
 -- | Output a result.
-yield :: o -> Plan k o ()
-yield o = PlanT (\kp ke _ _ -> ke o (kp ()))
+yield :: o -> Plan o m ()
+yield o = Plan $ \kp ke _ _ -> ke o (kp ())
+{-# INLINE yield #-}
 
 -- | Wait for input.
 --
--- @'await' = 'awaits' 'id'@
-await :: Category k => Plan (k i) o i
-await = PlanT (\kp _ kr kf -> kr kp id kf)
+-- @'await' = 'lift' 'id'@
+await :: Category k => Plan o (k i) i
+await = awaits id
+{-# INLINE await #-}
 
--- | Wait for a particular input.
---
--- @
--- awaits 'L'  :: 'Plan' ('T' a b) o a
--- awaits 'R'  :: 'Plan' ('T' a b) o b
--- awaits 'id' :: 'Plan' ('Data.Machine.Is.Is' i) o i
--- @
-awaits :: k i -> Plan k o i
-awaits h = PlanT $ \kp _ kr -> kr kp h
-
--- | @'stop' = 'empty'@
-stop :: Plan k o a
-stop = empty
+--- | Wait for a particular input.
+---
+--- @
+--- 'awaits' 'L'  :: 'Plan' o ('T' a b) a
+--- 'awaits' 'R'  :: 'Plan' o ('T' a b) b
+--- 'awaits' 'id' :: 'Plan' o ('Data.Machine.Is.Is' i) i
+--- @
+awaits :: f a -> Plan o f a
+awaits m = Plan $ \kp _ ka kf -> ka kp m kf
+{-# INLINE awaits #-}

@@ -14,7 +14,7 @@
 module Data.Machine.Wye
   (
   -- * Wyes
-    Wye, WyeT
+    Wye
   , Y(..)
   , wye
   , addX, addY
@@ -41,62 +41,54 @@ data Y a b c where
 -- | A 'Machine' that can read from two input stream in a non-deterministic manner.
 type Wye a b c = Machine (Y a b) c
 
--- | A 'Machine' that can read from two input stream in a non-deterministic manner with monadic side-effects.
-type WyeT m a b c = MachineT m (Y a b) c
-
 -- | Compose a pair of pipes onto the front of a 'Wye'.
 
 -- | Precompose a 'Process' onto each input of a 'Wye' (or 'WyeT').
 --
 -- This is left biased in that it tries to draw values from the 'X' input whenever they are
 -- available, and only draws from the 'Y' input when 'X' would block.
-wye :: Monad m => ProcessT m a a' -> ProcessT m b b' -> WyeT m a' b' c -> WyeT m a b c
-wye ma mb m = MachineT $ runMachineT m >>= \v -> case v of
-  Yield o k           -> return $ Yield o (wye ma mb k)
-  Stop                -> return Stop
-  Await f X ff        -> runMachineT ma >>= \u -> case u of
-    Yield a k           -> runMachineT . wye k mb $ f a
-    Stop                -> runMachineT $ wye stopped mb ff
-    Await g Refl fg     -> return . Await (\a -> wye (g a) mb $ encased v) X
-                                  . wye fg mb $ encased v
-  Await f Y ff        -> runMachineT mb >>= \u -> case u of
-    Yield b k           -> runMachineT . wye ma k $ f b
-    Stop                -> runMachineT $ wye ma stopped ff
-    Await g Refl fg     -> return . Await (\b -> wye ma (g b) $ encased v) Y
-                                  . wye ma fg $ encased v
-  Await f Z ff        -> runMachineT ma >>= \u -> case u of
-    Yield a k           -> runMachineT . wye k mb . f $ Left a
-    Stop                -> runMachineT mb >>= \w -> case w of
-      Yield b k           -> runMachineT . wye stopped k . f $ Right b
-      Stop                -> runMachineT $ wye stopped stopped ff
-      Await g Refl fg     -> return . Await (\b -> wye stopped (g b) $ encased v) Y
-                                    . wye stopped fg $ encased v
-    Await g Refl fg     -> runMachineT mb >>= \w -> case w of
-      Yield b k           -> runMachineT . wye (encased u) k . f $ Right b
-      Stop                -> return . Await (\a -> wye (g a) stopped $ encased v) X
-                                    . wye fg stopped $ encased v
-      Await h Refl fh     -> return . Await (\c -> case c of
-                                                  Left a  -> wye (g a) (encased w) $ encased v
-                                                  Right b -> wye (encased u) (h b) $ encased v) Z
-                                    . wye fg fh $ encased v
+wye :: Process a a' -> Process b b' -> Wye a' b' c -> Wye a b c
+wye ma mb m = case m of
+  Yield o k           -> Yield o (wye ma mb k)
+  Stop                -> Stop
+  Await f X ff        -> case ma of
+    Yield a k           -> wye k mb (f a)
+    Stop                -> wye Stop mb ff
+    Await g Refl fg     -> Await (\a -> wye (g a) mb m) X (wye fg mb m)
+  Await f Y ff        -> case mb of
+    Yield b k           -> wye ma k (f b)
+    Stop                -> wye ma Stop ff
+    Await g Refl fg     -> Await (\b -> wye ma (g b) m) Y (wye ma fg m)
+  Await f Z ff        -> case ma of
+    Yield a k           -> wye k mb (f $ Left a)
+    Stop                -> case mb of
+      Yield b k           -> wye Stop k (f $ Right b)
+      Stop                -> wye Stop Stop ff
+      Await g Refl fg     -> Await (\b -> wye Stop (g b) m) Y (wye Stop fg m)
+    Await g Refl fg     -> case mb of
+      Yield b k           -> wye ma k (f $ Right b)
+      Stop                -> Await (\a -> wye (g a) Stop m) X (wye fg Stop m)
+      Await h Refl fh     -> Await (\c -> case c of
+                                                  Left a  -> wye (g a) mb m
+                                                  Right b -> wye ma (h b) m) Z (wye fg fh m)
 
 -- | Precompose a pipe onto the left input of a wye.
-addX :: Monad m => ProcessT m a b -> WyeT m b c d -> WyeT m a c d
+addX :: Process a b -> Wye b c d -> Wye a c d
 addX p = wye p echo
 {-# INLINE addX #-}
 
 -- | Precompose a pipe onto the right input of a tee.
-addY :: Monad m => ProcessT m b c -> WyeT m a c d -> WyeT m a b d
+addY :: Process b c -> Wye a c d -> Wye a b d
 addY = wye echo
 {-# INLINE addY #-}
 
 -- | Tie off one input of a tee by connecting it to a known source.
-capX :: Monad m => SourceT m a -> WyeT m a b c -> ProcessT m b c
+capX :: Source a -> Wye a b c -> Process b c
 capX s t = process (capped Right) (addX s t)
 {-# INLINE capX #-}
 
 -- | Tie off one input of a tee by connecting it to a known source.
-capY :: Monad m => SourceT m b -> WyeT m a b c -> ProcessT m a c
+capY :: Source b -> Wye a b c -> Process a c
 capY s t = process (capped Left) (addY s t)
 {-# INLINE capY #-}
 

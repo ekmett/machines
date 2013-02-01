@@ -13,13 +13,14 @@
 ----------------------------------------------------------------------------
 module Data.Machine.Tee
   ( -- * Tees
-    Tee, TeeT
+    Tee
   , T(..)
   , tee
   , addL, addR
   , capL, capR
   ) where
 
+import Control.Applicative
 import Data.Machine.Is
 import Data.Machine.Process
 import Data.Machine.Type
@@ -38,42 +39,37 @@ data T a b c where
 -- | A 'Machine' that can read from two input stream in a deterministic manner.
 type Tee a b c = Machine (T a b) c
 
--- | A 'Machine' that can read from two input stream in a deterministic manner with monadic side-effects.
-type TeeT m a b c = MachineT m (T a b) c
-
 -- | Compose a pair of pipes onto the front of a Tee.
-tee :: Monad m => ProcessT m a a' -> ProcessT m b b' -> TeeT m a' b' c -> TeeT m a b c
-tee ma mb m = MachineT $ runMachineT m >>= \v -> case v of
-  Stop         -> return Stop
-  Yield o k    -> return $ Yield o $ tee ma mb k
-  Await f L ff -> runMachineT ma >>= \u -> case u of
-    Stop            -> runMachineT $ tee stopped mb ff
-    Yield a k       -> runMachineT $ tee k mb $ f a
-    Await g Refl fg ->
-      return $ Await (\a -> tee (g a) mb $ encased v) L $ tee fg mb $ encased v
-  Await f R ff -> runMachineT mb >>= \u -> case u of
-    Stop            -> runMachineT $ tee ma stopped ff
-    Yield b k       -> runMachineT $ tee ma k $ f b
-    Await g Refl fg ->
-      return $ Await (\b -> tee ma (g b) $ encased v) R $ tee ma fg $ encased v
+tee :: Process a a' -> Process b b' -> Tee a' b' c -> Tee a b c
+tee ma mb m = case m of
+  Stop         -> Stop
+  Yield o k    -> Yield o $ tee ma mb k
+  Await f L ff -> case ma of
+    Stop            -> tee empty mb ff
+    Yield a k       -> tee k mb $ f a
+    Await g Refl fg -> Await (\a -> tee (g a) mb m) L (tee fg mb m)
+  Await f R ff -> case mb of
+    Stop            -> tee ma empty ff
+    Yield b k       -> tee ma k (f b)
+    Await g Refl fg -> Await (\b -> tee ma (g b) m) R (tee ma fg m)
 
 -- | Precompose a pipe onto the left input of a tee.
-addL :: Monad m => ProcessT m a b -> TeeT m b c d -> TeeT m a c d
+addL :: Process a b -> Tee b c d -> Tee a c d
 addL p = tee p echo
 {-# INLINE addL #-}
 
 -- | Precompose a pipe onto the right input of a tee.
-addR :: Monad m => ProcessT m b c -> TeeT m a c d -> TeeT m a b d
+addR :: Process b c -> Tee a c d -> Tee a b d
 addR = tee echo
 {-# INLINE addR #-}
 
 -- | Tie off one input of a tee by connecting it to a known source.
-capL :: Monad m => SourceT m a -> TeeT m a b c -> ProcessT m b c
+capL :: Source a -> Tee a b c -> Process b c
 capL s t = fit cappedT $ addL s t
 {-# INLINE capL #-}
 
 -- | Tie off one input of a tee by connecting it to a known source.
-capR :: Monad m => SourceT m b -> TeeT m a b c -> ProcessT m a c
+capR :: Source b -> Tee a b c -> Process a c
 capR s t = fit cappedT $ addR s t
 {-# INLINE capR #-}
 
