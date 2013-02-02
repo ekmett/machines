@@ -35,6 +35,8 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import Data.Foldable
+import Data.Functor.Plus
+import Data.Functor.Bind
 import Data.Machine.Await
 import Data.Machine.Plan
 import Data.Pointed
@@ -61,12 +63,24 @@ instance Functor (Machine m) where
   fmap _ Stop = Stop
   {-# INLINEABLE fmap #-}
 
+instance Apply (Machine m) where
+  (<.>) = ap
+  {-# INLINE (<.>) #-}
+
 instance Applicative (Machine m) where
   pure a = Yield a Stop
   {-# INLINE pure #-}
 
   (<*>) = ap
   {-# INLINE (<*>) #-}
+
+instance Alt (Machine m) where
+  (<!>) = (<|>)
+  {-# INLINE (<!>) #-}
+
+instance Plus (Machine m) where
+  zero = empty
+  {-# INLINE zero #-}
 
 instance Alternative (Machine m) where
   Stop <|> n          = n
@@ -76,9 +90,14 @@ instance Alternative (Machine m) where
   empty = Stop
   {-# INLINE empty #-}
 
+instance Bind (Machine m) where
+  (>>-) = (>>=)
+  {-# INLINE (>>-) #-}
+
 instance Monad (Machine m) where
   return a = Yield a Stop
   {-# INLINE return #-}
+
   m0 >>= k = go m0 where
     go Stop            = Stop
     go (Yield a m)     = mappend (k a) (go m)
@@ -100,6 +119,7 @@ instance MonadIO m => MonadIO (Machine m) where
 instance MonadPlus (Machine m) where
   mplus = (<|>)
   {-# INLINE mplus #-}
+
   mzero = empty
   {-# INLINE mzero #-}
 
