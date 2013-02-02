@@ -24,6 +24,7 @@ module Data.Machine.Plan
   , yield
   , await
   , awaits
+  , request
   ) where
 
 import Control.Applicative
@@ -145,10 +146,14 @@ instance Await i m => Await i (Plan o m) where
 --- | Wait for a particular input.
 ---
 --- @
---- 'awaits' 'L'  :: 'Plan' o ('T' a b) a
---- 'awaits' 'R'  :: 'Plan' o ('T' a b) b
---- 'awaits' 'id' :: 'Plan' o ('Data.Machine.Is.Is' i) i
+--- 'awaits' 'L' :: 'Await' i f => 'Plan' o (f :+: g) i
+--- 'awaits' 'R' :: 'Await' j g => 'Plan' o (f :+: g) j
+--- 'awaits' 'This' :: 'Await' i f => 'Plan' o (Y f g) i
+--- 'awaits' 'That' :: 'Await' j g => 'Plan' o (Y f g) j
 --- @
-awaits :: f a -> Plan o f a
-awaits m = Plan $ \kp _ ka kf -> ka kp m kf
+awaits :: Await i f => (f i -> g j) -> Plan o g j
+awaits f = request (f await)
 {-# INLINE awaits #-}
+
+request :: g j -> Plan o g j
+request m = Plan $ \kp _ ka kf -> ka kp m kf

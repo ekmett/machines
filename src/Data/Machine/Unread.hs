@@ -43,4 +43,4 @@ peek = do
 
 -- | Push back into the input stream
 unread :: a -> Plan b (Unread a) ()
-unread a = awaits (Unread () a)
+unread a = request $ Unread () a

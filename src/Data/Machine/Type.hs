@@ -195,6 +195,6 @@ before n p = n <|> construct p
 -- @
 pass :: m o -> Machine m o
 pass k = repeatedly $ do
-  a <- awaits k
+  a <- request k
   yield a
 {-# INLINE pass #-}
