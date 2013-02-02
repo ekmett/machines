@@ -31,6 +31,9 @@ import Data.Machine.Process
 import Data.Monoid
 import Data.Pointed
 import Data.Profunctor
+import Data.Functor.Extend
+import Data.Functor.Bind
+import Data.Semigroupoid
 
 -- | 'Moore' machines
 data Moore a b = Moore b (a -> Moore a b)
@@ -73,6 +76,14 @@ instance Profunctor Moore where
   {-# INLINE dimap #-}
 #endif
 
+instance Apply (Moore a) where
+  (<.>) = (<*>)
+  {-# INLINE (<.>) #-}
+  m <. _ = m
+  {-# INLINE (<.) #-}
+  _ .> m = m
+  {-# INLINE (.>) #-}
+
 instance Applicative (Moore a) where
   pure a = r where r = Moore a (const r)
   {-# INLINE pure #-}
@@ -86,26 +97,42 @@ instance Pointed (Moore a) where
   point a = r where r = Moore a (const r)
   {-# INLINE point #-}
 
+instance Bind (Moore a) where
+  (>>-) = (>>=)
+  {-# INLINE (>>-) #-}
+
 -- | slow diagonalization
 instance Monad (Moore a) where
   return a = r where r = Moore a (const r)
   {-# INLINE return #-}
   Moore a k >>= f = case f a of
     Moore b _ -> Moore b (k >=> f)
+  {-# INLINEABLE (>>=) #-}
   _ >> m = m
+  {-# INLINE (>>) #-}
 
 instance Copointed (Moore a) where
   copoint (Moore b _) = b
   {-# INLINE copoint #-}
 
+instance Extend (Moore a) where
+  extended = extend
+  {-# INLINE extended #-}
+
 instance Comonad (Moore a) where
   extract (Moore b _) = b
   {-# INLINE extract #-}
   extend f w@(Moore _ g) = Moore (f w) (extend f . g)
+  {-# INLINEABLE extend #-}
 
 instance ComonadApply (Moore a) where
   Moore f ff <@> Moore a fa = Moore (f a) (\i -> ff i <@> fa i)
+  {-# INLINEABLE (<@>) #-}
   m <@ _ = m
   {-# INLINE (<@) #-}
   _ @> n = n
   {-# INLINE (@>) #-}
+
+instance Semigroupoid Moore where
+  Moore c f `o` Moore b g = Moore c (\a -> f b `o` g a)
+  {-# INLINEABLE o #-}
