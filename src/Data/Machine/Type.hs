@@ -1,6 +1,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Type
@@ -30,7 +32,10 @@ module Data.Machine.Type
 import Control.Applicative
 import Control.Category
 import Control.Monad
+import Control.Monad.IO.Class
+import Control.Monad.Trans.Class
 import Data.Foldable
+import Data.Machine.Await
 import Data.Machine.Plan
 import Data.Pointed
 import Data.Semigroup
@@ -79,6 +84,18 @@ instance Monad (Machine m) where
     go (Yield a m)     = mappend (k a) (go m)
     go (Await ka m kf) = Await (go . ka) m (go kf)
   {-# INLINE (>>=) #-}
+
+instance Await i m => Await i (Machine m) where
+  await = Await (\i -> Yield i Stop) await Stop
+  {-# INLINE await #-}
+
+instance MonadTrans Machine where
+  lift m = Await (\i -> Yield i Stop) m Stop
+  {-# INLINE lift #-}
+
+instance MonadIO m => MonadIO (Machine m) where
+  liftIO = lift . liftIO
+  {-# INLINE liftIO #-}
 
 instance MonadPlus (Machine m) where
   mplus = (<|>)

@@ -33,6 +33,7 @@ import Control.Monad.Trans.Class
 import Control.Monad.IO.Class
 import Control.Monad.State.Class
 import Control.Monad.Reader.Class
+import Data.Machine.Await
 import Prelude hiding ((.),id)
 
 -------------------------------------------------------------------------------
@@ -86,12 +87,6 @@ instance MonadPlus (Plan o m) where
   mplus = (<|>)
   {-# INLINE mplus #-}
 
--- |
--- @
--- lift 'L'  :: 'Plan' o ('T' a b) a
--- lift 'R'  :: 'Plan' o ('T' a b) b
--- lift 'id' :: 'Plan' oo ('Data.Machine.Is.Is' i) i
--- @
 instance MonadTrans (Plan o) where
   lift m = Plan $ \kp _ ka kf -> ka kp m kf
   {-# INLINE lift #-}
@@ -125,12 +120,9 @@ yield :: o -> Plan o m ()
 yield o = Plan $ \kp ke _ _ -> ke o (kp ())
 {-# INLINE yield #-}
 
--- | Wait for input.
---
--- @'await' = 'lift' 'id'@
-await :: Category k => Plan o (k i) i
-await = awaits id
-{-# INLINE await #-}
+instance Await i m => Await i (Plan o m) where
+  await = awaits await
+  {-# INLINE await #-}
 
 --- | Wait for a particular input.
 ---

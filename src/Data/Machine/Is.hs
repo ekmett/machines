@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, TypeFamilies #-}
+{-# LANGUAGE GADTs, TypeFamilies, FlexibleInstances, MultiParamTypeClasses #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Is
@@ -16,10 +16,14 @@ module Data.Machine.Is
 
 import Control.Category
 import Data.Monoid
+import Data.Machine.Await
 
 -- | Witnessed type equality
 data Is a b where
   Refl :: Is a a
+
+instance Await a (Is a) where
+  await = Refl
 
 instance Show (Is a b) where
   showsPrec _ Refl = showString "Refl"

@@ -45,6 +45,7 @@ library
 
   exposed-modules:
     Data.Machine
+    Data.Machine.Await
     Data.Machine.Is
     Data.Machine.Mealy
     Data.Machine.Moore
