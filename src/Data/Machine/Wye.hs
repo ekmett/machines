@@ -42,7 +42,7 @@ import Prelude hiding ((.),id)
 -- Wyes
 -------------------------------------------------------------------------------
 
--- | The input descriptor for a 'Wye' or 'WyeT'
+-- | The input descriptor for a 'Wye'.
 data Y f g a = This (f a) | That (g a) | These (f a) (g a)
   deriving (Show, Read, Eq, Ord, Functor, Foldable, Traversable)
 
@@ -64,7 +64,7 @@ type Wye a b = Machine ((->) a `Y` (->) b)
 
 -- | Compose a pair of pipes onto the front of a 'Wye'.
 
--- | Precompose a 'Process' onto each input of a 'Wye' (or 'WyeT').
+-- | Precompose a 'Process' onto each input of a 'Wye'.
 --
 -- This is left biased in that it tries to draw values from 'This' whenever they are
 -- available, and only draws from the 'That' input when 'This' would block.
