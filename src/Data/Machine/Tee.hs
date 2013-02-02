@@ -1,6 +1,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Tee
@@ -29,6 +30,8 @@ import Data.Machine.Process
 import Data.Machine.Type
 import Data.Machine.Source
 import Data.Copointed
+import Data.Semigroup.Traversable
+import Data.Semigroup.Foldable
 import Data.Traversable
 
 -------------------------------------------------------------------------------
@@ -37,18 +40,15 @@ import Data.Traversable
 
 -- | The input descriptor for a 'Tee' or 'TeeT'.
 data (m :+: n) a = L (m a) | R (n a)
+  deriving (Functor, Foldable, Traversable)
 
-instance (Functor m, Functor n) => Functor (m :+: n) where
-  fmap f (L m) = L (fmap f m)
-  fmap f (R m) = R (fmap f m)
+instance (Foldable1 f, Foldable1 g) => Foldable1 (f :+: g) where
+  foldMap1 f (L a) = foldMap1 f a
+  foldMap1 f (R b) = foldMap1 f b
 
-instance (Foldable m, Foldable n) => Foldable (m :+: n) where
-  foldMap f (L m) = foldMap f m
-  foldMap f (R m) = foldMap f m
-
-instance (Traversable m, Traversable n) => Traversable (m :+: n) where
-  traverse f (L m) = L <$> traverse f m
-  traverse f (R m) = R <$> traverse f m
+instance (Traversable1 f, Traversable1 g) => Traversable1 (f :+: g) where
+  traverse1 f (L a) = L <$> traverse1 f a
+  traverse1 f (R b) = R <$> traverse1 f b
 
 instance (Copointed m, Copointed n) => Copointed (m :+: n) where
   copoint (L m) = copoint m
@@ -61,12 +61,12 @@ instance (Extend m, Extend n) => Extend (m :+: n) where
   extended f (R m) = R (extended (f . R) m)
 
 instance (Comonad m, Comonad n) => Comonad (m :+: n) where
-  extract (L m) = extract m
-  extract (R m) = extract m
+  extract (L m)   = extract m
+  extract (R m)   = extract m
   duplicate (L m) = L (extend L m)
   duplicate (R m) = R (extend R m)
-  extend f (L m) = L (extend (f . L) m)
-  extend f (R m) = R (extend (f . R) m)
+  extend f (L m)  = L (extend (f . L) m)
+  extend f (R m)  = R (extend (f . R) m)
 
 -- | A 'Machine' that can read from two input stream in a deterministic manner.
 type Tee a b = Machine ((->) a :+: (->) b)
