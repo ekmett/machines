@@ -21,11 +21,9 @@ module Data.Machine.Tee
   ) where
 
 import Control.Applicative
-import Data.Machine.Is
 import Data.Machine.Process
 import Data.Machine.Type
 import Data.Machine.Source
-import Prelude hiding ((.),id)
 
 -------------------------------------------------------------------------------
 -- Tees
@@ -47,11 +45,11 @@ tee ma mb m = case m of
   Await f L ff -> case ma of
     Stop            -> tee empty mb ff
     Yield a k       -> tee k mb $ f a
-    Await g Refl fg -> Await (\a -> tee (g a) mb m) L (tee fg mb m)
+    Await g h fg -> Await (\a -> tee (g (h a)) mb m) L (tee fg mb m)
   Await f R ff -> case mb of
     Stop            -> tee ma empty ff
     Yield b k       -> tee ma k (f b)
-    Await g Refl fg -> Await (\b -> tee ma (g b) m) R (tee ma fg m)
+    Await g h fg -> Await (\b -> tee ma (g (h b)) m) R (tee ma fg m)
 
 -- | Precompose a pipe onto the left input of a tee.
 addL :: Process a b -> Tee b c d -> Tee a c d
@@ -74,7 +72,7 @@ capR s t = fit cappedT $ addR s t
 {-# INLINE capR #-}
 
 -- | Natural transformation used by 'capL' and 'capR'.
-cappedT :: T a a b -> Is a b
-cappedT R = Refl
-cappedT L = Refl
+cappedT :: T a a b -> a -> b
+cappedT R = id
+cappedT L = id
 {-# INLINE cappedT #-}

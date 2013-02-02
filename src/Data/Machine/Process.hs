@@ -4,7 +4,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Process
--- Copyright   :  (C) 2012 Edward Kmett
+-- Copyright   :  (C) 2012-2013 Edward Kmett
 -- License     :  BSD-style (see the file LICENSE)
 --
 -- Maintainer  :  Edward Kmett <ekmett@gmail.com>
@@ -17,7 +17,6 @@ module Data.Machine.Process
   -- * Processes
     Process
   , Automaton(..)
-  , process
   -- ** Common Processes
   , (<~), (~>)
   , echo
@@ -35,7 +34,6 @@ import Control.Applicative
 import Control.Category
 import Control.Monad (when, replicateM_)
 import Data.Foldable
-import Data.Machine.Is
 import Data.Machine.Plan
 import Data.Machine.Type
 import Prelude hiding ((.),id)
@@ -49,7 +47,7 @@ infixl 9 ~>
 
 -- | A @'Process' a b@ is a stream transducer that can consume values of type @a@
 -- from its input, and produce values of type @b@ for its output.
-type Process a b = Machine (Is a) b
+type Process a b = Machine ((->) a) b
 
 -- | An 'Automaton' is can be automatically lifted into a 'Process'
 class Automaton k where
@@ -59,9 +57,6 @@ instance Automaton (->) where
   auto f = repeatedly $ do
     i <- await
     yield (f i)
-
-instance Automaton Is where
-  auto Refl = echo
 
 -- | The trivial 'Process' that simply repeats each input it receives.
 echo :: Process a a
@@ -117,8 +112,8 @@ buffered = repeatedly . go [] where
 (<~) :: Process a b -> Machine m a -> Machine m b
 Stop            <~ _             = Stop
 Yield o k       <~ ma            = Yield o (k <~ ma)
-Await _ Refl ff <~ Stop          = ff <~ empty
-Await f Refl _  <~ Yield o k     = f o <~ k
+Await _ _ ff <~ Stop             = ff <~ empty
+Await f m _  <~ Yield o k        = f (m o) <~ k
 ab              <~ Await g kg fg = Await (\i -> ab <~ g i) kg (ab <~ fg)
 
 -- | Flipped ('<~').
@@ -130,8 +125,9 @@ supply :: [a] -> Process a b -> Process a b
 supply [] m = m
 supply _   Stop                = Stop
 supply xxs    (Yield o k)      = Yield o (supply xxs k)
-supply (x:xs) (Await f Refl _) = supply xs (f x)
+supply (x:xs) (Await f g _) = supply xs (f (g x))
 
+{-
 -- |
 -- Convert a machine into a process, with a little bit of help.
 --
@@ -146,3 +142,4 @@ process f (Yield o k) = Yield o (process f k)
 process f (Await g kir h) = Await (process f . g . f kir) Refl (process f h)
 
 -- TODO: if we revert from using 'Is' to using '(->)' then 'process' just becomes 'fit'
+-}

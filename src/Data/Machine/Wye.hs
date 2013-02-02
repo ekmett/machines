@@ -24,7 +24,6 @@ module Data.Machine.Wye
 import Control.Category
 import Data.Machine.Process
 import Data.Machine.Type
-import Data.Machine.Is
 import Data.Machine.Source
 import Prelude hiding ((.),id)
 
@@ -54,23 +53,23 @@ wye ma mb m = case m of
   Await f X ff        -> case ma of
     Yield a k           -> wye k mb (f a)
     Stop                -> wye Stop mb ff
-    Await g Refl fg     -> Await (\a -> wye (g a) mb m) X (wye fg mb m)
+    Await g h fg        -> Await (\a -> wye (g (h a)) mb m) X (wye fg mb m)
   Await f Y ff        -> case mb of
     Yield b k           -> wye ma k (f b)
     Stop                -> wye ma Stop ff
-    Await g Refl fg     -> Await (\b -> wye ma (g b) m) Y (wye ma fg m)
+    Await g h fg     -> Await (\b -> wye ma (g (h b)) m) Y (wye ma fg m)
   Await f Z ff        -> case ma of
     Yield a k           -> wye k mb (f $ Left a)
     Stop                -> case mb of
       Yield b k           -> wye Stop k (f $ Right b)
       Stop                -> wye Stop Stop ff
-      Await g Refl fg     -> Await (\b -> wye Stop (g b) m) Y (wye Stop fg m)
-    Await g Refl fg     -> case mb of
-      Yield b k           -> wye ma k (f $ Right b)
-      Stop                -> Await (\a -> wye (g a) Stop m) X (wye fg Stop m)
-      Await h Refl fh     -> Await (\c -> case c of
-                                                  Left a  -> wye (g a) mb m
-                                                  Right b -> wye ma (h b) m) Z (wye fg fh m)
+      Await g h fg     -> Await (\b -> wye Stop (g (h b)) m) Y (wye Stop fg m)
+    Await g pg fg     -> case mb of
+      Yield b k         -> wye ma k (f $ Right b)
+      Stop              -> Await (\a -> wye (g (pg a)) Stop m) X (wye fg Stop m)
+      Await h ph fh     -> Await (\c -> case c of
+                                                  Left a  -> wye (g (pg a)) mb m
+                                                  Right b -> wye ma (h (ph b)) m) Z (wye fg fh m)
 
 -- | Precompose a pipe onto the left input of a wye.
 addX :: Process a b -> Wye b c d -> Wye a c d
@@ -84,12 +83,12 @@ addY = wye echo
 
 -- | Tie off one input of a tee by connecting it to a known source.
 capX :: Source a -> Wye a b c -> Process b c
-capX s t = process (capped Right) (addX s t)
+capX s t = fit (capped Right) (addX s t)
 {-# INLINE capX #-}
 
 -- | Tie off one input of a tee by connecting it to a known source.
 capY :: Source b -> Wye a b c -> Process a c
-capY s t = process (capped Left) (addY s t)
+capY s t = fit (capped Left) (addY s t)
 {-# INLINE capY #-}
 
 -- | Natural transformation used by 'capX' and 'capY'
