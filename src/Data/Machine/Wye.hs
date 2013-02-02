@@ -27,11 +27,15 @@ module Data.Machine.Wye
 import Control.Applicative
 import Control.Category
 import Data.Foldable
+import Data.Functor.Apply
 import Data.Machine.Await
 import Data.Machine.Process
 import Data.Machine.Type
 import Data.Machine.Source
 import Data.Traversable
+import Data.Semigroup
+import Data.Semigroup.Foldable
+import Data.Semigroup.Traversable
 import Prelude hiding ((.),id)
 
 -------------------------------------------------------------------------------
@@ -41,6 +45,16 @@ import Prelude hiding ((.),id)
 -- | The input descriptor for a 'Wye' or 'WyeT'
 data Y f g a = This (f a) | That (g a) | These (f a) (g a)
   deriving (Show, Read, Eq, Ord, Functor, Foldable, Traversable)
+
+instance (Foldable1 f, Foldable1 g) => Foldable1 (Y f g) where
+  foldMap1 f (This a) = foldMap1 f a
+  foldMap1 f (That b) = foldMap1 f b
+  foldMap1 f (These a b) = foldMap1 f a <> foldMap1 f b
+
+instance (Traversable1 f, Traversable1 g) => Traversable1 (Y f g) where
+  traverse1 f (This a)    = This <$> traverse1 f a
+  traverse1 f (That b)    = That <$> traverse1 f b
+  traverse1 f (These a b) = These <$> traverse1 f a <.> traverse1 f b
 
 instance (Await i f, Await j g) => Await (Either i j) (Y f g) where
   await = These (Left <$> await) (Right <$> await)
