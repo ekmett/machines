@@ -23,11 +23,13 @@ module Data.Machine.Await
     Await(..)
   ) where
 
-class Await i m | m -> i where
+import Control.Applicative ()
+
+class Functor f => Await i f | f -> i where
   -- | Wait for input.
   --
   -- @'await' = 'lift' 'id'@
-  await :: m i
+  await :: f i
 
 instance Await i ((->)i) where
   await = id

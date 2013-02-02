@@ -1,9 +1,11 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, UndecidableInstances #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Wye
--- Copyright   :  (C) 2012 Edward Kmett, Rúnar Bjarnason, Paul Chiusano
+-- Copyright   :  (C) 2012-2013 Edward Kmett, Rúnar Bjarnason, Paul Chiusano
 -- License     :  BSD-style (see the file LICENSE)
 --
 -- Maintainer  :  Edward Kmett <ekmett@gmail.com>
@@ -21,10 +23,14 @@ module Data.Machine.Wye
   , capX, capY
   ) where
 
+import Control.Applicative
 import Control.Category
+import Data.Foldable
+import Data.Machine.Await
 import Data.Machine.Process
 import Data.Machine.Type
 import Data.Machine.Source
+import Data.Traversable
 import Prelude hiding ((.),id)
 
 -------------------------------------------------------------------------------
@@ -32,13 +38,14 @@ import Prelude hiding ((.),id)
 -------------------------------------------------------------------------------
 
 -- | The input descriptor for a 'Wye' or 'WyeT'
-data Y a b c where
-  X :: Y a b a            -- block waiting on the left input
-  Y :: Y a b b            -- block waiting on the right input
-  Z :: Y a b (Either a b) -- block waiting on either input
+data Y f g a = This (f a) | That (g a) | These (f a) (g a)
+  deriving (Show, Read, Eq, Ord, Functor, Foldable, Traversable)
+
+instance (Await i f, Await j g) => Await (Either i j) (Y f g) where
+  await = These (Left <$> await) (Right <$> await)
 
 -- | A 'Machine' that can read from two input stream in a non-deterministic manner.
-type Wye a b = Machine (Y a b)
+type Wye a b = Machine (Y ((->) a) ((->) b))
 
 -- | Compose a pair of pipes onto the front of a 'Wye'.
 
@@ -50,26 +57,26 @@ wye :: Process a a' -> Process b b' -> Wye a' b' c -> Wye a b c
 wye ma mb m = case m of
   Yield o k           -> Yield o (wye ma mb k)
   Stop                -> Stop
-  Await f X ff        -> case ma of
-    Yield a k           -> wye k mb (f a)
+  Await f (This fh) ff  -> case ma of
+    Yield a k           -> wye k mb (f $ fh a)
     Stop                -> wye Stop mb ff
-    Await g h fg        -> Await (\a -> wye (g (h a)) mb m) X (wye fg mb m)
-  Await f Y ff        -> case mb of
-    Yield b k           -> wye ma k (f b)
+    Await g h fg        -> Await (\a -> wye (g a) mb m) (This h) (wye fg mb m)
+  Await f (That fh) ff  -> case mb of
+    Yield b k           -> wye ma k (f $ fh b)
     Stop                -> wye ma Stop ff
-    Await g h fg     -> Await (\b -> wye ma (g (h b)) m) Y (wye ma fg m)
-  Await f Z ff        -> case ma of
-    Yield a k           -> wye k mb (f $ Left a)
-    Stop                -> case mb of
-      Yield b k           -> wye Stop k (f $ Right b)
-      Stop                -> wye Stop Stop ff
-      Await g h fg     -> Await (\b -> wye Stop (g (h b)) m) Y (wye Stop fg m)
+    Await g h fg        -> Await (\b -> wye ma (g b) m) (That h) (wye ma fg m)
+  Await f (These fx fy) ff -> case ma of
+    Yield a k              -> wye k mb (f $ fx a)
+    Stop                   -> case mb of
+      Yield b k              -> wye Stop k (f $ fy b)
+      Stop                   -> wye Stop Stop ff
+      Await g h fg           -> Await (\b -> wye Stop (g b) m) (That h) (wye Stop fg m)
     Await g pg fg     -> case mb of
-      Yield b k         -> wye ma k (f $ Right b)
-      Stop              -> Await (\a -> wye (g (pg a)) Stop m) X (wye fg Stop m)
+      Yield b k         -> wye ma k (f $ fy b)
+      Stop              -> Await (\a -> wye (g a) Stop m) (This pg) (wye fg Stop m)
       Await h ph fh     -> Await (\c -> case c of
-                                                  Left a  -> wye (g (pg a)) mb m
-                                                  Right b -> wye ma (h (ph b)) m) Z (wye fg fh m)
+                                          Left a  -> wye (g a) mb m
+                                          Right b -> wye ma (h b) m) (These (Left <$> pg) (Right <$> ph)) (wye fg fh m)
 
 -- | Precompose a pipe onto the left input of a wye.
 addX :: Process a b -> Wye b c d -> Wye a c d
@@ -83,17 +90,17 @@ addY = wye echo
 
 -- | Tie off one input of a tee by connecting it to a known source.
 capX :: Source a -> Wye a b c -> Process b c
-capX s t = fit (capped Right) (addX s t)
+capX s t = fit (capped const) (addX s t)
 {-# INLINE capX #-}
 
 -- | Tie off one input of a tee by connecting it to a known source.
 capY :: Source b -> Wye a b c -> Process a c
-capY s t = fit (capped Left) (addY s t)
+capY s t = fit (capped (const id)) (addY s t)
 {-# INLINE capY #-}
 
 -- | Natural transformation used by 'capX' and 'capY'
-capped :: (a -> Either a a) -> Y a a b -> a -> b
-capped _ X = id
-capped _ Y = id
-capped f Z = f
+capped :: (f a -> f a -> f a) -> Y f f a -> f a
+capped _ (This f)    = f
+capped _ (That g)    = g
+capped z (These f g) = z f g
 {-# INLINE capped #-}

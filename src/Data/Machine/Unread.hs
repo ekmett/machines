@@ -23,12 +23,16 @@ import Data.Machine.Await
 import Data.Machine.Plan
 
 -- | This is a simple process type that knows how to push back input.
-data Unread a r where
-  Unread :: a -> Unread a ()
-  Read   :: Unread a a
+data Unread o a where
+  Unread :: a -> o -> Unread o a
+  Read   :: (o -> a) -> Unread o a
+
+instance Functor (Unread o) where
+  fmap f (Unread r a) = Unread (f r) a
+  fmap f (Read k) = Read (f . k)
 
 instance Await a (Unread a) where
-  await = Read
+  await = Read id
 
 -- | Peek at the next value in the input stream without consuming it
 peek :: Plan b (Unread a) a
@@ -39,4 +43,4 @@ peek = do
 
 -- | Push back into the input stream
 unread :: a -> Plan b (Unread a) ()
-unread a = awaits (Unread a)
+unread a = awaits (Unread () a)
