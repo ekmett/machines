@@ -33,6 +33,8 @@ import Control.Monad.Trans.Class
 import Control.Monad.IO.Class
 import Control.Monad.State.Class
 import Control.Monad.Reader.Class
+import Data.Functor.Bind
+import Data.Functor.Plus
 import Data.Machine.Await
 import Prelude hiding ((.),id)
 
@@ -62,17 +64,33 @@ instance Functor (Plan o m) where
   fmap f (Plan m) = Plan $ \k -> m (k . f)
   {-# INLINE fmap #-}
 
+instance Apply (Plan o m) where
+  (<.>) = ap
+  {-# INLINE (<.>) #-}
+
 instance Applicative (Plan o m) where
   pure a = Plan $ \kp _ _ _ -> kp a
   {-# INLINE pure #-}
   (<*>) = ap
   {-# INLINE (<*>) #-}
 
+instance Alt (Plan o m) where
+  (<!>) = (<|>)
+  {-# INLINE (<!>) #-}
+
+instance Plus (Plan o m) where
+  zero = empty
+  {-# INLINE zero #-}
+
 instance Alternative (Plan o m) where
   empty = Plan $ \_ _ _ kf -> kf
   {-# INLINE empty #-}
   Plan m <|> Plan n = Plan $ \kp ke kr kf -> m kp ke (\ks kir _ -> kr ks kir (n kp ke kr kf)) (n kp ke kr kf)
   {-# INLINE (<|>) #-}
+
+instance Bind (Plan o m) where
+  (>>-) = (>>=)
+  {-# INLINE (>>-) #-}
 
 instance Monad (Plan o m) where
   return a = Plan $ \kp _ _ _ -> kp a
