@@ -32,13 +32,15 @@
 <a name="line-23"></a>    <span class='hs-conid'>Await</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span>
 <a name="line-24"></a>  <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
 <a name="line-25"></a>
-<a name="line-26"></a><a name="Await"></a><span class='hs-keyword'>class</span> <span class='hs-conid'>Await</span> <span class='hs-varid'>i</span> <span class='hs-varid'>m</span> <span class='hs-keyglyph'>|</span> <span class='hs-varid'>m</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-varid'>i</span> <span class='hs-keyword'>where</span>
-<a name="line-27"></a>  <span class='hs-comment'>-- | Wait for input.</span>
-<a name="line-28"></a>  <span class='hs-comment'>--</span>
-<a name="line-29"></a>  <span class='hs-comment'>-- @'await' = 'lift' 'id'@</span>
-<a name="line-30"></a>  <span class='hs-varid'>await</span> <span class='hs-keyglyph'>::</span> <span class='hs-varid'>m</span> <span class='hs-varid'>i</span>
-<a name="line-31"></a>
-<a name="line-32"></a><span class='hs-keyword'>instance</span> <span class='hs-conid'>Await</span> <span class='hs-varid'>i</span> <span class='hs-layout'>(</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>-&gt;</span><span class='hs-layout'>)</span><span class='hs-varid'>i</span><span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
-<a name="line-33"></a>  <span class='hs-varid'>await</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>id</span>
+<a name="line-26"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Applicative</span> <span class='hs-conid'>()</span>
+<a name="line-27"></a>
+<a name="line-28"></a><a name="Await"></a><span class='hs-keyword'>class</span> <span class='hs-conid'>Functor</span> <span class='hs-varid'>f</span> <span class='hs-keyglyph'>=&gt;</span> <span class='hs-conid'>Await</span> <span class='hs-varid'>i</span> <span class='hs-varid'>f</span> <span class='hs-keyglyph'>|</span> <span class='hs-varid'>f</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-varid'>i</span> <span class='hs-keyword'>where</span>
+<a name="line-29"></a>  <span class='hs-comment'>-- | Wait for input.</span>
+<a name="line-30"></a>  <span class='hs-comment'>--</span>
+<a name="line-31"></a>  <span class='hs-comment'>-- @'await' = 'lift' 'id'@</span>
+<a name="line-32"></a>  <span class='hs-varid'>await</span> <span class='hs-keyglyph'>::</span> <span class='hs-varid'>f</span> <span class='hs-varid'>i</span>
+<a name="line-33"></a>
+<a name="line-34"></a><span class='hs-keyword'>instance</span> <span class='hs-conid'>Await</span> <span class='hs-varid'>i</span> <span class='hs-layout'>(</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>-&gt;</span><span class='hs-layout'>)</span><span class='hs-varid'>i</span><span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
+<a name="line-35"></a>  <span class='hs-varid'>await</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>id</span>
 </pre></body>
 </html>
