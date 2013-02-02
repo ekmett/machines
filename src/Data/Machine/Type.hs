@@ -158,7 +158,13 @@ run (Await ks m ke) = mplus (m >>= run . ks) (run ke)
 -- |
 -- Connect different kinds of machines.
 --
--- @'fit' 'id' = 'id'@
+-- @
+-- 'fit' 'id' = 'id'
+-- 'fit' 'Data.Machine.Tee.L' :: 'Machine' (f 'Data.Machine.Tee.:+:' g) a -> 'Machine' f a
+-- 'fit' 'Data.Machine.Tee.R' :: 'Machine' (f 'Data.Machine.Tee.:+:' g) a -> 'Machine' g a
+-- 'fit' 'Data.Machine.Wye.This' :: 'Machine' ('Data.Machine.Wye.Y' f g) a -> 'Machine' f a
+-- 'fit' 'Data.Machine.Wye.That' :: 'Machine' ('Data.Machine.Wye.Y' f g) a -> 'Machine' g a
+-- @
 fit :: (forall a. m a -> n a) -> Machine m o -> Machine n o
 fit f = go where
   go (Yield o k)     = Yield o (go k)
@@ -183,15 +189,10 @@ before :: Machine m o -> Plan o m a -> Machine m o
 before n p = n <|> construct p
 {-# INLINE before #-}
 
--- | Given a handle, ignore all other inputs and just stream input from that handle.
+-- | Repeatedly 'request' the same thing and 'yield' it.
 --
 -- @
 -- 'pass' 'id' :: 'Data.Machine.Process.Process' a a
--- 'pass' 'Data.Machine.Tee.L'  :: 'Data.Machine.Tee.Tee' a b a
--- 'pass' 'Data.Machine.Tee.R'  :: 'Data.Machine.Tee.Tee' a b b
--- 'pass' 'Data.Machine.Wye.X'  :: 'Data.Machine.Wye.Wye' a b a
--- 'pass' 'Data.Machine.Wye.Y'  :: 'Data.Machine.Wye.Wye' a b b
--- 'pass' 'Data.Machine.Wye.Z'  :: 'Data.Machine.Wye.Wye' a b (Either a b)
 -- @
 pass :: m o -> Machine m o
 pass k = repeatedly $ do
