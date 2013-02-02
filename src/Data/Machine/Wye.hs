@@ -2,6 +2,7 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, UndecidableInstances #-}
+{-# LANGUAGE TypeOperators #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Wye
@@ -45,7 +46,7 @@ instance (Await i f, Await j g) => Await (Either i j) (Y f g) where
   await = These (Left <$> await) (Right <$> await)
 
 -- | A 'Machine' that can read from two input stream in a non-deterministic manner.
-type Wye a b = Machine (Y ((->) a) ((->) b))
+type Wye a b = Machine ((->) a `Y` (->) b)
 
 -- | Compose a pair of pipes onto the front of a 'Wye'.
 
