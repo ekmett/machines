@@ -110,11 +110,11 @@ buffered = repeatedly . go [] where
 -- ('<~') :: 'Process' b c -> 'Machine' k b -> 'Machine' k c
 -- @
 (<~) :: Process a b -> Machine m a -> Machine m b
-Stop            <~ _             = Stop
-Yield o k       <~ ma            = Yield o (k <~ ma)
-Await _ _ ff <~ Stop             = ff <~ empty
-Await f m _  <~ Yield o k        = f (m o) <~ k
-ab              <~ Await g kg fg = Await (\i -> ab <~ g i) kg (ab <~ fg)
+Stop         <~ _             = Stop
+Yield o k    <~ ma            = Yield o (k <~ ma)
+Await _ _ ff <~ Stop          = ff <~ empty
+Await f m _  <~ Yield o k     = f (m o) <~ k
+ab           <~ Await g kg fg = Await (\i -> ab <~ g i) kg (ab <~ fg)
 
 -- | Flipped ('<~').
 (~>) :: Machine m b -> Process b c -> Machine m c
@@ -122,24 +122,7 @@ ma ~> mp = mp <~ ma
 
 -- | Feed a 'Process' some input.
 supply :: [a] -> Process a b -> Process a b
-supply [] m = m
-supply _   Stop                = Stop
-supply xxs    (Yield o k)      = Yield o (supply xxs k)
+supply []     m             = m
+supply _      Stop          = Stop
+supply xxs    (Yield o k)   = Yield o (supply xxs k)
 supply (x:xs) (Await f g _) = supply xs (f (g x))
-
-{-
--- |
--- Convert a machine into a process, with a little bit of help.
---
--- @
--- 'process' 'Data.Machine.Tee.L' :: 'Data.Machine.Process.Process' a c -> 'Data.Machine.Tee.Tee' a b c
--- 'process' 'Data.Machine.Tee.R' :: 'Data.Machine.Process.Process' b c -> 'Data.Machine.Tee.Tee' a b c
--- 'process' 'id' :: 'Data.Machine.Process.Process' a b -> 'Data.Machine.Process.Process' a b
--- @
-process :: (forall a. m a -> i -> a) -> Machine m o -> Process i o
-process _ Stop = Stop
-process f (Yield o k) = Yield o (process f k)
-process f (Await g kir h) = Await (process f . g . f kir) Refl (process f h)
-
--- TODO: if we revert from using 'Is' to using '(->)' then 'process' just becomes 'fit'
--}
