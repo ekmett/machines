@@ -66,8 +66,8 @@ type Wye a b = Machine ((->) a `Y` (->) b)
 
 -- | Precompose a 'Process' onto each input of a 'Wye' (or 'WyeT').
 --
--- This is left biased in that it tries to draw values from the 'X' input whenever they are
--- available, and only draws from the 'Y' input when 'X' would block.
+-- This is left biased in that it tries to draw values from 'This' whenever they are
+-- available, and only draws from the 'That' input when 'This' would block.
 wye :: Process a a' -> Process b b' -> Wye a' b' c -> Wye a b c
 wye ma mb m = case m of
   Yield o k           -> Yield o (wye ma mb k)
