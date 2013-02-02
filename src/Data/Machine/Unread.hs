@@ -1,5 +1,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Unread
@@ -17,12 +19,16 @@ module Data.Machine.Unread
   , unread
   ) where
 
+import Data.Machine.Await
 import Data.Machine.Plan
 
 -- | This is a simple process type that knows how to push back input.
 data Unread a r where
   Unread :: a -> Unread a ()
   Read   :: Unread a a
+
+instance Await a (Unread a) where
+  await = Read
 
 -- | Peek at the next value in the input stream without consuming it
 peek :: Plan b (Unread a) a
