@@ -24,12 +24,14 @@ module Data.Machine.Mealy
 import Control.Applicative
 import Control.Arrow
 import Control.Category
+import Data.Functor.Bind
 import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
 import Data.Profunctor
 import Data.Pointed
 import Data.Semigroup
+import Data.Semigroupoid
 import Data.Sequence as Seq
 import Prelude hiding ((.),id)
 
@@ -42,6 +44,14 @@ instance Functor (Mealy a) where
   {-# INLINE fmap #-}
   b <$ _ = pure b
   {-# INLINE (<$) #-}
+
+instance Apply (Mealy a) where
+  (<.>) = (<*>)
+  {-# INLINE (<.>) #-}
+  m <. _ = m
+  {-# INLINE (<.) #-}
+  _ .> m = m
+  {-# INLINE (.>) #-}
 
 instance Applicative (Mealy a) where
   pure b = r where r = Mealy (const (b, r))
@@ -64,6 +74,10 @@ unfoldMealy f = go where
   go s = Mealy $ \a -> case f s a of
     (b, t) -> (b, go t)
 {-# INLINE unfoldMealy #-}
+
+instance Bind (Mealy a) where
+  (>>-) = (>>=)
+  {-# INLINE (>>-) #-}
 
 -- | slow diagonalization
 instance Monad (Mealy a) where
@@ -96,6 +110,9 @@ instance Automaton Mealy where
          yield b
          go m
   {-# INLINE auto #-}
+
+instance Semigroupoid Mealy where
+  o = (.)
 
 instance Category Mealy where
   id = Mealy (\a -> (a, id))
