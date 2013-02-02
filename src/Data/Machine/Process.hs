@@ -47,7 +47,7 @@ infixl 9 ~>
 
 -- | A @'Process' a b@ is a stream transducer that can consume values of type @a@
 -- from its input, and produce values of type @b@ for its output.
-type Process a b = Machine ((->) a) b
+type Process a = Machine ((->) a)
 
 -- | An 'Automaton' is can be automatically lifted into a 'Process'
 class Automaton k where

@@ -38,7 +38,7 @@ data Y a b c where
   Z :: Y a b (Either a b) -- block waiting on either input
 
 -- | A 'Machine' that can read from two input stream in a non-deterministic manner.
-type Wye a b c = Machine (Y a b) c
+type Wye a b = Machine (Y a b)
 
 -- | Compose a pair of pipes onto the front of a 'Wye'.
 
