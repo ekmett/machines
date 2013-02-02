@@ -33,12 +33,10 @@ instance Await a (Unread a) where
 -- | Peek at the next value in the input stream without consuming it
 peek :: Plan b (Unread a) a
 peek = do
-  a <- awaits Read
-  awaits (Unread a)
+  a <- await
+  unread a
   return a
 
 -- | Push back into the input stream
 unread :: a -> Plan b (Unread a) ()
 unread a = awaits (Unread a)
-
--- TODO: make this a class?
