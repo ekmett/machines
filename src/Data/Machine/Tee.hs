@@ -72,7 +72,7 @@ instance (Comonad m, Comonad n) => Comonad (m :+: n) where
 type Tee a b = Machine ((->) a :+: (->) b)
 
 -- | Compose a pair of pipes onto the front of a Tee.
-tee :: Process a a' -> Process b b' -> Tee a' b' c -> Tee a b c
+tee :: Machine m a -> Machine n b -> Tee a b c -> Machine (m :+: n) c
 tee ma mb m = case m of
   Stop         -> Stop
   Yield o k    -> Yield o $ tee ma mb k
@@ -86,6 +86,8 @@ tee ma mb m = case m of
     Await g h fg -> Await (\b -> tee ma (g b) m) (R h) (tee ma fg m)
 
 -- | Precompose a pipe onto the left input of a tee.
+
+-- TODO: generalize
 addL :: Process a b -> Tee b c d -> Tee a c d
 addL p = tee p echo
 {-# INLINE addL #-}
@@ -101,6 +103,8 @@ capL s t = fit cappedT (addL s t)
 {-# INLINE capL #-}
 
 -- | Tie off one input of a tee by connecting it to a known source.
+
+-- TODO: can we generalize to something like: capR :: Source b -> Machine (m :+: (->)a) c -> Machine m c ?
 capR :: Source b -> Tee a b c -> Process a c
 capR s t = fit cappedT (addR s t)
 {-# INLINE capR #-}

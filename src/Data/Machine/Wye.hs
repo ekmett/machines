@@ -62,13 +62,13 @@ instance (Await i f, Await j g) => Await (Either i j) (Y f g) where
 -- | A 'Machine' that can read from two input stream in a non-deterministic manner.
 type Wye a b = Machine ((->) a `Y` (->) b)
 
--- | Compose a pair of pipes onto the front of a 'Wye'.
-
 -- | Precompose a 'Process' onto each input of a 'Wye'.
 --
 -- This is left biased in that it tries to draw values from 'This' whenever they are
 -- available, and only draws from the 'That' input when 'This' would block.
-wye :: Process a a' -> Process b b' -> Wye a' b' c -> Wye a b c
+--
+-- @'wye' :: 'Process' a a' -> 'Process' b b' -> 'Wye' a b c -> 'Wye' a' b' c@
+wye :: (Functor m, Functor n) => Machine m a -> Machine n b -> Wye a b c -> Machine (Y m n) c
 wye ma mb m = case m of
   Yield o k           -> Yield o (wye ma mb k)
   Stop                -> Stop
