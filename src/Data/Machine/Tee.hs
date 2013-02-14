@@ -70,7 +70,11 @@ instance (Comonad m, Comonad n) => Comonad (m :+: n) where
 -- | A 'Machine' that can read from two input stream in a deterministic manner.
 type Tee a b = Machine ((->) a :+: (->) b)
 
--- | Compose a pair of pipes onto the front of a Tee.
+-- | Compose a pair of machines onto the front of a Tee.
+--
+-- @
+-- tee ma mb = addL ma . addR mb
+-- @
 tee :: Machine m a -> Machine n b -> Tee a b c -> Machine (m :+: n) c
 tee ma mb m = case m of
   Stop         -> Stop
