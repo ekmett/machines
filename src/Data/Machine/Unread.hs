@@ -17,10 +17,13 @@ module Data.Machine.Unread
   ( Unread(..)
   , peek
   , unread
+  , unreading
   ) where
 
 import Data.Machine.Await
 import Data.Machine.Plan
+import Data.Machine.Process
+import Data.Machine.Type
 
 -- | This is a simple process type that knows how to push back input.
 data Unread o a where
@@ -44,3 +47,11 @@ peek = do
 -- | Push back into the input stream
 unread :: a -> Plan b (Unread a) ()
 unread a = request $ Unread () a
+
+-- | Construct a process from a plan that requires unreading
+unreading :: Plan b (Unread o) a -> Process o b
+unreading = go . construct where
+  go Stop        = Stop
+  go (Yield o k) = Yield o (go k)
+  go (Await k (Read m) e)     = Await (go . k) m (go e)
+  go (Await k (Unread a o) _) = supply [o] (go (k a))

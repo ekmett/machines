@@ -26,7 +26,6 @@ import Control.Applicative
 import Control.Comonad
 import Data.Foldable
 import Data.Functor.Extend
-import Data.Machine.Process
 import Data.Machine.Type
 import Data.Machine.Source
 import Data.Copointed
@@ -71,7 +70,11 @@ instance (Comonad m, Comonad n) => Comonad (m :+: n) where
 -- | A 'Machine' that can read from two input stream in a deterministic manner.
 type Tee a b = Machine ((->) a :+: (->) b)
 
--- | Compose a pair of pipes onto the front of a Tee.
+-- | Compose a pair of machines onto the front of a Tee.
+--
+-- @
+-- tee ma mb = addL ma . addR mb
+-- @
 tee :: Machine m a -> Machine n b -> Tee a b c -> Machine (m :+: n) c
 tee ma mb m = case m of
   Stop         -> Stop
@@ -85,27 +88,37 @@ tee ma mb m = case m of
     Yield b k       -> tee ma k (f (fh b))
     Await g h fg -> Await (\b -> tee ma (g b) m) (R h) (tee ma fg m)
 
--- | Precompose a pipe onto the left input of a tee.
+-- | Precompose a machine onto the left input of a tee-like.
+addL :: Machine m a -> Machine ((->) a :+: n) b -> Machine (m :+: n) b
+addL ma m = case m of
+  Stop             -> Stop
+  Yield o k        -> Yield o $ addL ma k
+  Await f (L fh) ff -> case ma of
+    Stop         -> addL empty ff
+    Yield a k    -> addL k (f (fh a))
+    Await g h fg -> Await (\a -> addL (g a) m) (L h) (addL fg m)
+  Await f (R fh) ff -> Await (addL ma . f) (R fh) (addL ma ff)
 
--- TODO: generalize
-addL :: Process a b -> Tee b c d -> Tee a c d
-addL p = tee p echo
-{-# INLINE addL #-}
+-- | Precompose a machine onto the right input of a tee-like.
 
--- | Precompose a pipe onto the right input of a tee.
-addR :: Process b c -> Tee a c d -> Tee a b d
-addR = tee echo
-{-# INLINE addR #-}
+-- Alternatively: addR ma = fit flipT . addL ma . fit flipT
+addR :: Machine m a -> Machine (n :+: (->) a) b -> Machine (n :+: m) b
+addR ma m = case m of
+  Stop             -> Stop
+  Yield o k        -> Yield o $ addR ma k
+  Await f (L fh) ff -> Await (addR ma . f) (L fh) (addR ma ff)
+  Await f (R fh) ff -> case ma of
+    Stop         -> addR empty ff
+    Yield a k    -> addR k (f (fh a))
+    Await g h fg -> Await (\a -> addR (g a) m) (R h) (addR fg m)
 
--- | Tie off one input of a tee by connecting it to a known source.
-capL :: Source a -> Tee a b c -> Process b c
+-- | Tie off one input of a tee-like by connecting it to a known source.
+capL :: Source a -> Machine ((->) a :+: m) b -> Machine m b
 capL s t = fit cappedT (addL s t)
 {-# INLINE capL #-}
 
--- | Tie off one input of a tee by connecting it to a known source.
-
--- TODO: can we generalize to something like: capR :: Source b -> Machine (m :+: (->)a) c -> Machine m c ?
-capR :: Source b -> Tee a b c -> Process a c
+-- | Tie off one input of a tee-like by connecting it to a known source.
+capR :: Source a -> Machine (m :+: (->) a) b -> Machine m b
 capR s t = fit cappedT (addR s t)
 {-# INLINE capR #-}
 
