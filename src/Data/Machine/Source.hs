@@ -23,7 +23,6 @@ module Data.Machine.Source
 
 import Control.Category
 import Data.Foldable
-import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
 import Prelude hiding ((.),id)

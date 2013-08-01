@@ -25,7 +25,6 @@ import Control.Applicative
 import Control.Arrow
 import Control.Category
 import Data.Functor.Bind
-import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
 import Data.Profunctor

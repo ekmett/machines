@@ -20,8 +20,8 @@ module Data.Machine.Unread
   , unreading
   ) where
 
+import Data.Functor
 import Data.Machine.Await
-import Data.Machine.Plan
 import Data.Machine.Process
 import Data.Machine.Type
 
@@ -38,16 +38,16 @@ instance Await a (Unread a) where
   await = Read id
 
 -- | Peek at the next value in the input stream without consuming it
-peek :: Plan b (Unread a) a
+peek :: Machine (Unread a) a
 peek = do
   a <- await
-  unread a
-  return a
+  a <$ unread a
 
 -- | Push back into the input stream
-unread :: a -> Plan b (Unread a) ()
+unread :: a -> Machine (Unread a) ()
 unread a = request $ Unread () a
 
+{-
 -- | Construct a process from a plan that requires unreading
 unreading :: Plan b (Unread o) a -> Process o b
 unreading = go . construct where
@@ -55,3 +55,4 @@ unreading = go . construct where
   go (Yield o k) = Yield o (go k)
   go (Await k (Read m) e)     = Await (go . k) m (go e)
   go (Await k (Unread a o) _) = supply [o] (go (k a))
+-}

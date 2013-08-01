@@ -50,7 +50,6 @@ library
     Data.Machine.Mealy
     Data.Machine.Moore
     Data.Machine.Process
-    Data.Machine.Plan
     Data.Machine.Source
     Data.Machine.Tee
     Data.Machine.Type

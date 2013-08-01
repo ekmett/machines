@@ -34,7 +34,6 @@ import Control.Applicative
 import Control.Category
 import Control.Monad (when, replicateM_)
 import Data.Foldable
-import Data.Machine.Plan
 import Data.Machine.Type
 import Prelude hiding ((.),id)
 
@@ -54,41 +53,37 @@ class Automaton k where
   auto :: k a b -> Process a b
 
 instance Automaton (->) where
-  auto f = repeatedly $ do
-    i <- await
-    yield (f i)
+  auto f = repeatedly (fmap f await)
 
 -- | The trivial 'Process' that simply repeats each input it receives.
 echo :: Process a a
-echo = repeatedly $ do
-  i <- await
-  yield i
+echo = repeatedly await
 
 -- | A 'Process' that prepends the elements of a 'Foldable' onto its input, then repeats its input from there.
 prepended :: Foldable f => f a -> Process a a
-prepended = before echo . traverse_ yield
+prepended fa = foldMap return fa <|> echo
 
 -- | A 'Process' that only passes through inputs that match a predicate.
 filtered :: (a -> Bool) -> Process a a
 filtered p = repeatedly $ do
   i <- await
-  when (p i) $ yield i
+  guard (p i)
 
 -- | A 'Process' that drops the first @n@, then repeats the rest.
 dropping :: Int -> Process a a
-dropping n = before echo $ replicateM_ n await
+dropping n = replicateM_ n (await *> empty) <|> echo
 
 -- | A 'Process' that passes through the first @n@ elements from its input then stops
 taking :: Int -> Process a a
-taking n = construct . replicateM_ n $ await >>= yield
+taking n = replicateM_ n await
 
 -- | A 'Process' that passes through elements until a predicate ceases to hold, then stops
 takingWhile :: (a -> Bool) -> Process a a
-takingWhile p = repeatedly $ await >>= \v -> if p v then yield v else empty
+takingWhile p = repeatedly $ await >>= \v -> if p v then return v else empty
 
 -- | A 'Process' that drops elements while a predicate holds
 droppingWhile :: (a -> Bool) -> Process a a
-droppingWhile p = before echo loop where
+droppingWhile p = loop <|> echo where
   loop = await >>= \v -> if p v then loop else yield v
 
 -- | Chunk up the input into `n` element lists.
@@ -97,11 +92,11 @@ droppingWhile p = before echo loop where
 buffered :: Int -> Process a [a]
 buffered = repeatedly . go [] where
   go [] 0  = empty
-  go acc 0 = yield (reverse acc)
+  go acc 0 = pure (reverse acc)
   go acc n = do
-    i <- await <|> yield (reverse acc) *> empty
+    i <- await <|> pure (reverse acc) *> empty
     go (i:acc) $! n-1
-
+n
 -- | Build a new 'Machine' by adding a 'Process' to the output of an old 'Machine'
 --
 -- @
@@ -110,11 +105,16 @@ buffered = repeatedly . go [] where
 -- ('<~') :: 'Process' b c -> 'Machine' k b -> 'Machine' k c
 -- @
 (<~) :: Process a b -> Machine m a -> Machine m b
+ml <~ mr = Machine $ \ky kh ka -> runMachine ml (\b k -> ky b (k <~ mr)) kh $ \mf kf ks ->
+  runMachine mr (\a k -> ks (mf a) <~ k) (kf <~ empty) $ \mg kg kt -> ka mg (ml <~ kt) (\i -> ml <~ kg i)
+
+{-
 Stop         <~ _             = Stop
 Yield o k    <~ ma            = Yield o (k <~ ma)
 Await _ _ ff <~ Stop          = ff <~ empty
 Await f m _  <~ Yield o k     = f (m o) <~ k
 ab           <~ Await g kg fg = Await (\i -> ab <~ g i) kg (ab <~ fg)
+-}
 
 -- | Flipped ('<~').
 (~>) :: Machine m b -> Process b c -> Machine m c
@@ -122,7 +122,12 @@ ma ~> mp = mp <~ ma
 
 -- | Feed a 'Process' some input.
 supply :: [a] -> Process a b -> Process a b
+supply = undefined
+-- supply xs0 m = Machine $ \ky kh ka -> runMachine m (\a r xs -> ky a (r xs)) ( ) ( ) xs0
+
+{-
 supply []     m             = m
 supply _      Stop          = Stop
 supply xxs    (Yield o k)   = Yield o (supply xxs k)
 supply (x:xs) (Await f g _) = supply xs (f (g x))
+-}

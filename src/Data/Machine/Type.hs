@@ -1,17 +1,21 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
+#ifndef MIN_VERSION_mtl
+#define MIN_VERSION_mtl(x,y,z) 0
+#endif
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Type
--- Copyright   :  (C) 2012 Edward Kmett
+-- Copyright   :  (C) 2012-2013 Edward Kmett
 -- License     :  BSD-style (see the file LICENSE)
 --
 -- Maintainer  :  Edward Kmett <ekmett@gmail.com>
 -- Stability   :  provisional
--- Portability :  rank-2, GADTs
+-- Portability :  rank-N, GADTs
 --
 ----------------------------------------------------------------------------
 module Data.Machine.Type
@@ -21,9 +25,7 @@ module Data.Machine.Type
   , run_
   , run
   -- ** Building machines from plans
-  , construct
   , repeatedly
-  , before
   -- * Reshaping machines
   , fit
   , pass
@@ -32,45 +34,48 @@ module Data.Machine.Type
 import Control.Applicative
 import Control.Category
 import Control.Monad
+import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
+import Control.Monad.State.Class
+import Control.Monad.Reader.Class
 import Data.Foldable
 import Data.Functor.Plus
 import Data.Functor.Bind
 import Data.Machine.Await
-import Data.Machine.Plan
 import Data.Pointed
 import Data.Semigroup
 import Prelude hiding ((.),id)
 
 -------------------------------------------------------------------------------
--- Transduction Machines
+-- Machines
 -------------------------------------------------------------------------------
 
--- | A 'Machine' reads from a number of inputs and may yield results before stopping.
+newtype Machine m a = Machine
+  { runMachine :: forall r.
+      (a -> r -> r) ->                          -- Yield a (Machine m a)
+      r ->                                      -- Halt
+      (forall z. m z -> r -> (z -> r) -> r) ->  -- forall z. Await (m z) (Machine m a) (z -> Machine m a)
+      r
+  }
+
+-- | A @'Machine' o m a@ is a specification for a pure 'Machine', that can perform actions in @m@, which
+-- writes values of type @o@, and has intermediate results of type @a@.
 --
--- Note: A 'Machine' is usually constructed from 'Plan', so it does not need to be CPS'd.
---
--- (Now that we have a 'Monad' of our own, this is no longer completely true.)
-data Machine m a
-  = Yield a (Machine m a)
-  | forall i. Await (i -> Machine m a) (m i) (Machine m a)
-  | Stop
+-- It is perhaps easier to think of 'Machine' in its un-cps'ed form, which would
+-- look like:
 
 instance Functor (Machine m) where
-  fmap f (Yield o k) = Yield (f o) (fmap f k)
-  fmap f (Await ka m kf) = Await (fmap f . ka) m (fmap f kf)
-  fmap _ Stop = Stop
-  {-# INLINEABLE fmap #-}
+  fmap f (Machine m) = Machine $ \k -> m (k . f)
+  {-# INLINE fmap #-}
 
 instance Apply (Machine m) where
   (<.>) = ap
   {-# INLINE (<.>) #-}
 
 instance Applicative (Machine m) where
-  pure a = Yield a Stop
+  pure a = Machine $ \ky kh _ -> ky a kh
   {-# INLINE pure #-}
-
   (<*>) = ap
   {-# INLINE (<*>) #-}
 
@@ -83,48 +88,78 @@ instance Plus (Machine m) where
   {-# INLINE zero #-}
 
 instance Alternative (Machine m) where
-  Stop <|> n          = n
-  Yield a m <|> n     = Yield a (m <> n)
-  Await ka k kf <|> n = Await (\i -> ka i <|> n) k (kf <|> n)
-  {-# INLINE (<|>) #-}
-  empty = Stop
+  empty = Machine $ \_ kh _ -> kh
   {-# INLINE empty #-}
+  Machine m <|> Machine n = Machine $ \ky kh ka -> m ky (n ky kh ka) ka
+  {-# INLINE (<|>) #-}
 
 instance Bind (Machine m) where
   (>>-) = (>>=)
   {-# INLINE (>>-) #-}
 
 instance Monad (Machine m) where
-  return a = Yield a Stop
+  return a = Machine $ \ky kh _ -> ky a kh
   {-# INLINE return #-}
-
-  m0 >>= k = go m0 where
-    go Stop            = Stop
-    go (Yield a m)     = mappend (k a) (go m)
-    go (Await ka m kf) = Await (go . ka) m (go kf)
+  Machine m >>= f = Machine $ \ky kh ka -> m (\a kn -> runMachine (f a) ky kn ka) kh ka
+  fail _ = Machine $ \_ kh _ -> kh
   {-# INLINE (>>=) #-}
 
-instance Await i m => Await i (Machine m) where
-  await = Await (\i -> Yield i Stop) await Stop
-  {-# INLINE await #-}
-
-instance MonadTrans Machine where
-  lift m = Await (\i -> Yield i Stop) m Stop
-  {-# INLINE lift #-}
-
-instance MonadIO m => MonadIO (Machine m) where
-  liftIO = lift . liftIO
-  {-# INLINE liftIO #-}
-
 instance MonadPlus (Machine m) where
+  mzero = empty
+  {-# INLINE mzero #-}
   mplus = (<|>)
   {-# INLINE mplus #-}
 
-  mzero = empty
-  {-# INLINE mzero #-}
+instance MonadTrans Machine where
+  lift m = Machine $ \ky kh ka -> ka m kh $ \a -> ky a kh
+  {-# INLINE lift #-}
+
+instance MonadIO m => MonadIO (Machine m) where
+  liftIO m = Machine $ \ky kh ka -> ka (liftIO m) kh $ \a -> ky a kh
+  {-# INLINE liftIO #-}
+
+instance MonadState s m => MonadState s (Machine m) where
+  get = lift get
+  {-# INLINE get #-}
+  put = lift . put
+  {-# INLINE put #-}
+#if MIN_VERSION_mtl(2,1,0)
+  state = lift . state
+  {-# INLINE state #-}
+#endif
+
+instance MonadReader e m => MonadReader e (Machine m) where
+  ask = lift ask
+  {-# INLINE ask #-}
+#if MIN_VERSION_mtl(2,1,0)
+  reader = lift . reader
+  {-# INLINE reader #-}
+#endif
+  local f (Machine m) = Machine $ \ky kh ka -> m ky kh (ka . local f)
+  {-# INLINE local #-}
+
+instance Await a m => Await a (Machine m) where
+  await = awaits await
+  {-# INLINE await #-}
+
+--- | Wait for a particular input.
+---
+--- @
+--- 'awaits' 'L' :: 'Await' i f => 'Machine' o (f :+: g) i
+--- 'awaits' 'R' :: 'Await' j g => 'Machine' o (f :+: g) j
+--- 'awaits' 'This' :: 'Await' i f => 'Machine' o (Y f g) i
+--- 'awaits' 'That' :: 'Await' j g => 'Machine' o (Y f g) j
+--- @
+awaits :: Await a m => (m a -> n b) -> Machine n b
+awaits f = request (f await)
+{-# INLINE awaits #-}
+
+request :: m a -> Machine m a
+request m = Machine $ \ky kh ka -> ka m kh $ \a -> ky a kh
+{-# INLINE request #-}
 
 instance Pointed (Machine m) where
-  point a = Yield a Stop
+  point a = Machine $ \ky kh _ -> ky a kh
   {-# INLINE point #-}
 
 instance Semigroup (Machine m a) where
@@ -132,28 +167,26 @@ instance Semigroup (Machine m a) where
   {-# INLINE (<>) #-}
 
 instance Monoid (Machine m a) where
-  mempty = Stop
+  mempty = Machine $ \_ kh _ -> kh
   {-# INLINE mempty #-}
   mappend = (<|>)
   {-# INLINE mappend #-}
 
 instance Foldable (Machine m) where
-  foldMap _ Stop          = mempty
-  foldMap f (Yield o k)   = f o `mappend` foldMap f k
-  foldMap f (Await _ _ e) = foldMap f e
-  {-# INLINEABLE foldMap #-}
+  foldMap f m = runMachine m (\a r -> f a `mappend` r) mempty (\_ e _ -> e)
+  {-# INLINE foldMap #-}
+
+-------------------------------------------------------------------------------
+-- Transduction Machines
+-------------------------------------------------------------------------------
 
 run_ :: MonadPlus m => Machine m b -> m ()
-run_ Stop            = return ()
-run_ (Yield _ k)     = run_ k
-run_ (Await ks m ke) = mplus (m >>= run_ . ks) (run_ ke)
-{-# INLINEABLE run_ #-}
+run_ m = runMachine m (\a r -> r) (return ()) $ \m ke ks -> mplus (m >>= ks) ke
+{-# INLINE run_ #-}
 
 run :: MonadPlus m => Machine m b -> m [b]
-run Stop            = return []
-run (Yield o m)     = (o:) `liftM` run m
-run (Await ks m ke) = mplus (m >>= run . ks) (run ke)
-{-# INLINEABLE run #-}
+run m = runMachine m (\a r -> (a:) `liftM` r) (return []) $ \m ke ks -> mplus (m >>= ks) ke
+{-# INLINE run #-}
 
 -- |
 -- Connect different kinds of machines.
@@ -166,36 +199,21 @@ run (Await ks m ke) = mplus (m >>= run . ks) (run ke)
 -- 'fit' 'Data.Machine.Wye.That' :: 'Machine' ('Data.Machine.Wye.Y' f g) a -> 'Machine' g a
 -- @
 fit :: (forall a. m a -> n a) -> Machine m o -> Machine n o
-fit f = go where
-  go (Yield o k)     = Yield o (go k)
-  go Stop            = Stop
-  go (Await g kir h) = Await (go . g) (f kir) (go h)
+fit f (Machine m) = Machine $ \ky kh ka -> m ky kh (ka . f)
 {-# INLINE fit #-}
 
--- | Compile a machine to a model.
-construct :: Plan o m a -> Machine m o
-construct (Plan m) = m (const Stop) Yield Await Stop
-{-# INLINE construct #-}
-
--- | Generates a model that runs a machine until it stops, then start it up again.
+-- | Generates a model that runs a 'Machine' until it stops, then start it up again.
 --
--- @'repeatedly' m = 'construct' ('Control.Monad.forever' m)@
-repeatedly :: Plan o m a -> Machine m o
-repeatedly (Plan m) = r where r = m (const r) Yield Await Stop
+-- @'repeatedly' m = 'Control.Monad.forever' m@
+repeatedly :: Machine m a -> Machine m a
+repeatedly m = fix (m <>)
 {-# INLINE repeatedly #-}
 
--- | Evaluate a machine until it stops, and then yield answers according to the supplied model.
-before :: Machine m o -> Plan o m a -> Machine m o
-before n p = n <|> construct p
-{-# INLINE before #-}
-
--- | Repeatedly 'request' the same thing and 'yield' it.
+-- | Repeatedly 'request' the same thing and 'return' it.
 --
 -- @
 -- 'pass' 'id' :: 'Data.Machine.Process.Process' a a
 -- @
 pass :: m o -> Machine m o
-pass k = repeatedly $ do
-  a <- request k
-  yield a
+pass = repeatedly . request
 {-# INLINE pass #-}
