@@ -30,12 +30,14 @@ module Data.Machine.Process
   , droppingWhile
   , takingWhile
   , buffered
+  , fold
+  , scan
   ) where
 
 import Control.Applicative
 import Control.Category
 import Control.Monad (liftM, when, replicateM_)
-import Data.Foldable
+import Data.Foldable hiding (fold)
 import Data.Machine.Is
 import Data.Machine.Plan
 import Data.Machine.Type
@@ -155,3 +157,16 @@ process f (MachineT m) = MachineT (liftM f' m) where
   f' (Yield o k)     = Yield o (process f k)
   f' Stop            = Stop
   f' (Await g kir h) = Await (process f . g . f kir) Refl (process f h)
+
+scan :: Category k => (a -> b -> a) -> a -> Machine (k b) a
+scan func seed = construct $ go seed where
+  go cur = do
+    next <- await
+    yield $ func cur next
+    go $ func cur next
+
+fold :: Category k => (a -> b -> a) -> a -> Machine (k b) a
+fold func seed = construct $ go seed where
+  go cur = do
+    next <- await <|> yield cur *> stop
+    go (func cur next)
