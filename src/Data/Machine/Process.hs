@@ -158,6 +158,14 @@ process f (MachineT m) = MachineT (liftM f' m) where
   f' Stop            = Stop
   f' (Await g kir h) = Await (process f . g . f kir) Refl (process f h)
 
+-- | 
+-- Construct a 'Process' from a left-scanning operation.
+--
+-- Like 'fold', but yielding intermediate values.
+--
+-- @
+-- 'scan' :: (a -> b -> a) -> a -> Process b a
+-- @  
 scan :: Category k => (a -> b -> a) -> a -> Machine (k b) a
 scan func seed = construct $ go seed where
   go cur = do
@@ -165,6 +173,14 @@ scan func seed = construct $ go seed where
     yield $ func cur next
     go $ func cur next
 
+-- | 
+-- Construct a 'Process' from a left-folding operation.
+--
+-- Like 'scan', but only yielding the final value.
+--
+-- @
+-- 'fold' :: (a -> b -> a) -> a -> Process b a
+-- @
 fold :: Category k => (a -> b -> a) -> a -> Machine (k b) a
 fold func seed = construct $ go seed where
   go cur = do
