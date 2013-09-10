@@ -46,6 +46,7 @@ library
   exposed-modules:
     Data.Machine
     Data.Machine.Is
+    Data.Machine.Fanout
     Data.Machine.Mealy
     Data.Machine.Moore
     Data.Machine.Process
