@@ -21,7 +21,7 @@ answers out.
 There is a lot of flexibility when building a machine in choosing between empowering the machine to run its own monadic effects
 or delegating that responsibility to a custom driver.
 
-A port of this design to scala is available from runarorama/machines
+A port of this design to scala is available from runarorama/scala-machines
 
 Runar's slides are also available from https://dl.dropbox.com/u/4588997/Machines.pdf
 
