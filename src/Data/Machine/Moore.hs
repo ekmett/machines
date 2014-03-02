@@ -90,8 +90,8 @@ instance Pointed (Moore a) where
 instance Monad (Moore a) where
   return a = r where r = Moore a (const r)
   {-# INLINE return #-}
-  Moore a k >>= f = case f a of
-    Moore b _ -> Moore b (k >=> f)
+  k >>= f = j (fmap f k) where
+    j (Moore a g) = Moore (extract a) (\x -> j $ fmap (\(Moore _ h) -> h x) (g x))
   _ >> m = m
 
 instance Copointed (Moore a) where
