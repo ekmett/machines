@@ -52,7 +52,7 @@ newtype PlanT k o m a = PlanT
   { runPlanT :: forall r.
       (a -> m r) ->                                     -- Done a
       (o -> m r -> m r) ->                              -- Yield o (Plan k o a)
-      (forall z. (z -> m r) -> k z -> m r -> m r) ->  -- forall z. Await (z -> Plan o a) (k z) (Plan k o a)
+      (forall z. (z -> m r) -> k z -> m r -> m r) ->    -- forall z. Await (z -> Plan k o a) (k z) (Plan k o a)
       m r ->                                            -- Fail
       m r
   }
