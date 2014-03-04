@@ -1,3 +1,11 @@
+0.2.5
+-----
+* Added `deconstruct`, `tagDone` and `finishWith`
+
+0.2.4
+-----
+* Added `asPats`, `sinkPart_`, `autoM`, and `fitM`
+
 0.2.1
 -----
 * Fixed the `Mealy` Monad
