@@ -23,7 +23,6 @@ module Data.Machine.Moore
 
 import Control.Applicative
 import Control.Comonad
-import Control.Monad
 import Data.Copointed
 import Data.Machine.Plan
 import Data.Machine.Type

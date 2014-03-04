@@ -32,16 +32,21 @@ module Data.Machine.Process
   , buffered
   , fold
   , scan
+  , asParts
+  , sinkPart_
+  , autoM
   ) where
 
 import Control.Applicative
 import Control.Category
 import Control.Monad (liftM, when, replicateM_)
+import Control.Monad.Trans.Class
 import Data.Foldable hiding (fold)
 import Data.Machine.Is
 import Data.Machine.Plan
 import Data.Machine.Type
-import Prelude hiding ((.),id)
+import Data.Void
+import Prelude hiding ((.), id, mapM_)
 
 infixr 9 <~
 infixl 9 ~>
@@ -186,3 +191,28 @@ fold func seed = construct $ go seed where
   go cur = do
     next <- await <|> yield cur *> stop
     go (func cur next)
+
+-- | Break each input into pieces that are fed downstream
+-- individually.
+asParts :: Foldable f => Process (f a) a
+asParts = repeatedly $ await >>= mapM_ yield
+
+-- | @sinkPart_ toParts sink@ creates a process that uses the
+-- @toParts@ function to break input into a tuple of @(passAlong,
+-- sinkPart)@ for which the second projection is given to the supplied
+-- @sink@ 'ProcessT' (that produces no output) while the first
+-- projection is passed down the pipeline.
+sinkPart_ :: Monad m => (a -> (b,c)) -> ProcessT m c Void -> ProcessT m a b
+sinkPart_ p = go
+  where go m = MachineT $ runMachineT m >>= \v -> case v of
+          Stop -> return Stop
+          Yield _ k -> runMachineT $ go k
+          Await f Refl ff -> return $
+            Await (\x -> let (keep,sink) = p x
+                         in encased . Yield keep $ go (f sink))
+                  Refl
+                  (go ff)
+
+-- | Apply a monadic function to each element of a 'ProcessT'.
+autoM :: Monad m => (a -> m b) -> ProcessT m a b
+autoM f = repeatedly $ await >>= lift . f >>= yield
