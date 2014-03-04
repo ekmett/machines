@@ -1,6 +1,6 @@
 name:          machines
 category:      Control, Enumerator
-version:       0.2.3.1
+version:       0.2.4
 license:       BSD3
 cabal-version: >= 1.10
 license-file:  LICENSE
@@ -41,7 +41,8 @@ library
     profunctors  >= 3,
     semigroups   >= 0.8.3,
     transformers == 0.3.*,
-    mtl          >= 2 && < 2.2
+    mtl          >= 2 && < 2.2,
+    void         >= 0.6.1 && < 0.7
 
   exposed-modules:
     Data.Machine
