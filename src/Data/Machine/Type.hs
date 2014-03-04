@@ -30,6 +30,11 @@ module Data.Machine.Type
   , before
 --  , sink
 
+  -- ** Deconstructing machines back into plans
+  , deconstruct
+  , tagDone
+  , finishWith
+
   -- * Reshaping machines
   , fit
   , fitM
@@ -225,6 +230,43 @@ pass k = repeatedly $ do
 -- | This is a stopped 'Machine'
 stopped :: Machine k b
 stopped = encased Stop
+
+--------------------------------------------------------------------------------
+-- Deconstruction
+--------------------------------------------------------------------------------
+
+--- | Convert a 'Machine' back into a 'Plan'. The first value the
+--- machine yields that is tagged with the 'Left' data constructor is
+--- used as the return value of the resultant 'Plan'. Machine-yielded
+--- values tagged with 'Right' are yielded -- sans tag -- by the
+--- result 'Plan'. This may be used when monadic binding of results is
+--- required.
+deconstruct :: Monad m => MachineT m k (Either a o) -> PlanT k o m a
+deconstruct m = PlanT $ \r y a f -> 
+  let aux k = runPlanT (deconstruct k) r y a f
+  in runMachineT m >>= \v -> case v of
+       Stop -> f
+       Yield (Left o) _ -> r o
+       Yield (Right o) k -> y o (aux k)
+       Await g fk h -> a (aux . g) fk (aux h)
+
+-- | Use a predicate to mark a yielded value as the terminal value of
+-- this 'Machine'. This is useful in combination with 'deconstruct' to
+-- combine 'Plan's.
+tagDone :: Monad m => (o -> Bool) -> MachineT m k o -> MachineT m k (Either o o)
+tagDone f = fmap aux
+  where aux x = if f x then Left x else Right x
+
+-- | Use a function to produce and mark a yielded value as the
+-- terminal value of a 'Machine'. All yielded values for which the
+-- given function returns 'Nothing' are yielded down the pipeline, but
+-- the first value for which the function returns a 'Just' value will
+-- be returned by a 'Plan' created via 'deconstruct'.
+finishWith :: Monad m
+           => (o -> Maybe r) -> MachineT m k o -> MachineT m k (Either r o)
+finishWith f = fmap aux
+  where aux x = maybe (Right x) Left $ f x
+
 
 -------------------------------------------------------------------------------
 -- Sink
