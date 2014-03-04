@@ -32,6 +32,7 @@ module Data.Machine.Type
 
   -- * Reshaping machines
   , fit
+  , fitM
   , pass
 
   , stopped
@@ -169,6 +170,15 @@ fit f (MachineT m) = MachineT (liftM f' m) where
   f' (Yield o k)     = Yield o (fit f k)
   f' Stop            = Stop
   f' (Await g kir h) = Await (fit f . g) (f kir) (fit f h)
+
+--- | Connect machine transformers over different monads using a monad
+--- morphism.
+fitM :: (Monad m, Monad m')
+     => (forall a. m a -> m' a) -> MachineT m k o -> MachineT m' k o
+fitM f (MachineT m) = MachineT $ f (liftM aux m)
+  where aux Stop = Stop
+        aux (Yield o k) = Yield o (fitM f k)
+        aux (Await g kg gg) = Await (fitM f . g) kg (fitM f gg)
 
 -- | Compile a machine to a model.
 construct :: Monad m => PlanT k o m a -> MachineT m k o
