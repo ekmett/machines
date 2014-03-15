@@ -1,6 +1,6 @@
 name:          machines
 category:      Control, Enumerator
-version:       0.2.5
+version:       0.3
 license:       BSD3
 cabal-version: >= 1.10
 license-file:  LICENSE
@@ -53,9 +53,9 @@ library
     Data.Machine.Process
     Data.Machine.Plan
     Data.Machine.Source
+    Data.Machine.Stack
     Data.Machine.Tee
     Data.Machine.Type
-    Data.Machine.Unread
     Data.Machine.Wye
 
   default-language: Haskell2010
