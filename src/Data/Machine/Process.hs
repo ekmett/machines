@@ -31,20 +31,23 @@ module Data.Machine.Process
   , takingWhile
   , buffered
   , fold
+  , fold1
   , scan
   , asParts
   , sinkPart_
   , autoM
+  , foldMap
   ) where
 
 import Control.Applicative
 import Control.Category
 import Control.Monad (liftM, when, replicateM_)
 import Control.Monad.Trans.Class
-import Data.Foldable hiding (fold)
+import Data.Foldable hiding (fold, foldMap)
 import Data.Machine.Is
 import Data.Machine.Plan
 import Data.Machine.Type
+import Data.Monoid
 import Data.Void
 import Prelude hiding ((.), id, mapM_)
 
@@ -163,14 +166,14 @@ process f (MachineT m) = MachineT (liftM f' m) where
   f' Stop            = Stop
   f' (Await g kir h) = Await (process f . g . f kir) Refl (process f h)
 
--- | 
+-- |
 -- Construct a 'Process' from a left-scanning operation.
 --
 -- Like 'fold', but yielding intermediate values.
 --
 -- @
 -- 'scan' :: (a -> b -> a) -> a -> Process b a
--- @  
+-- @
 scan :: Category k => (a -> b -> a) -> a -> Machine (k b) a
 scan func seed = construct $ go seed where
   go cur = do
@@ -178,7 +181,7 @@ scan func seed = construct $ go seed where
     yield $ func cur next
     go $ func cur next
 
--- | 
+-- |
 -- Construct a 'Process' from a left-folding operation.
 --
 -- Like 'scan', but only yielding the final value.
@@ -191,6 +194,18 @@ fold func seed = construct $ go seed where
   go cur = do
     next <- await <|> yield cur *> stop
     go (func cur next)
+
+-- | Like 'fold' but uses first emitted value as seed
+fold1 :: Category k => (a -> a -> a) -> Machine (k a) a
+fold1 func = construct (await >>= go) where
+  go cur = do
+    next <- await <|> yield cur *> stop
+    go (func cur next)
+
+-- | Like `fold` only uses `f` to map `A` to `B` and uses Monoid `M`
+--   for associative operation
+foldMap :: (Category k, Monoid b) => (a -> b) -> Machine (k a) b
+foldMap f = fold (\b a -> mappend b (f a)) mempty
 
 -- | Break each input into pieces that are fed downstream
 -- individually.
