@@ -31,6 +31,7 @@ module Data.Machine.Process
   , takingWhile
   , buffered
   , fold
+  , fold1
   , scan
   , asParts
   , sinkPart_
@@ -190,6 +191,13 @@ scan func seed = construct $ go seed where
 -- @
 fold :: Category k => (a -> b -> a) -> a -> Machine (k b) a
 fold func seed = construct $ go seed where
+  go cur = do
+    next <- await <|> yield cur *> stop
+    go (func cur next)
+
+-- | Like 'fold' but uses first emitted value as seed
+fold1 :: Category k => (a -> a -> a) -> Machine (k a) a
+fold1 func = construct (await >>= go) where
   go cur = do
     next <- await <|> yield cur *> stop
     go (func cur next)
