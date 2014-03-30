@@ -46,6 +46,7 @@ module Data.Machine.Process
   , sequencing
   , mapping
   , reading
+  , showing
   ) where
 
 import Control.Applicative
@@ -317,3 +318,8 @@ reading = repeatedly $ do
   case reads s of
     [(a, "")] -> yield a
     _         -> stop
+
+-- |
+-- Convert 'Show'able values to 'String's
+showing :: (Category k, Show a) => Machine (k a) String
+showing = mapping show
