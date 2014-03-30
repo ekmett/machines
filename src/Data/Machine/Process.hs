@@ -44,6 +44,7 @@ module Data.Machine.Process
   , largest
   , smallest
   , sequencing
+  , mapping
   ) where
 
 import Control.Applicative
@@ -300,3 +301,8 @@ sequencing = repeatedly $ do
   ma <- await
   a  <- lift ma
   yield a
+
+-- |
+-- Apply a function to all values coming from the input
+mapping :: Category k => (a -> b) -> Machine (k a) b
+mapping f = repeatedly $ await >>= yield . f
