@@ -200,10 +200,7 @@ scan1 func = construct $ await >>= go where
 -- 'fold' :: (a -> b -> a) -> a -> Process b a
 -- @
 fold :: Category k => (a -> b -> a) -> a -> Machine (k b) a
-fold func seed = construct $ go seed where
-  go cur = do
-    next <- await <|> yield cur *> stop
-    go (func cur next)
+fold func seed = scan func seed ~> final
 
 -- | Break each input into pieces that are fed downstream
 -- individually.
