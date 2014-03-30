@@ -35,6 +35,7 @@ module Data.Machine.Process
   , asParts
   , sinkPart_
   , autoM
+  , last
   ) where
 
 import Control.Applicative
@@ -46,7 +47,7 @@ import Data.Machine.Is
 import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Void
-import Prelude hiding ((.), id, mapM_)
+import Prelude hiding ((.), id, last, mapM_)
 
 infixr 9 <~
 infixl 9 ~>
@@ -216,3 +217,15 @@ sinkPart_ p = go
 -- | Apply a monadic function to each element of a 'ProcessT'.
 autoM :: Monad m => (a -> m b) -> ProcessT m a b
 autoM f = repeatedly $ await >>= lift . f >>= yield
+
+-- |
+-- Skip all but the last element of the input
+--
+-- @
+-- 'last' :: Process a a
+-- @
+last :: Category k => Machine (k a) a
+last = construct $ await >>= go where
+  go prev = do
+    next <- await <|> yield prev *> stop
+    go next
