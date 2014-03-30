@@ -45,6 +45,7 @@ module Data.Machine.Process
   , smallest
   , sequencing
   , mapping
+  , reading
   ) where
 
 import Control.Applicative
@@ -306,3 +307,13 @@ sequencing = repeatedly $ do
 -- Apply a function to all values coming from the input
 mapping :: Category k => (a -> b) -> Machine (k a) b
 mapping f = repeatedly $ await >>= yield . f
+
+-- |
+-- Parse 'Read'able values, only emitting the value if the parse succceeds.
+-- This 'Machine' stops at first parsing error
+reading :: (Category k, Read a) => Machine (k String) a
+reading = repeatedly $ do
+  s <- await
+  case reads s of
+    [(a, "")] -> yield a
+    _         -> stop
