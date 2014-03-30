@@ -32,6 +32,7 @@ module Data.Machine.Process
   , buffered
   , fold
   , scan
+  , scan1
   , asParts
   , sinkPart_
   , autoM
@@ -176,6 +177,15 @@ process f (MachineT m) = MachineT (liftM f' m) where
 -- @
 scan :: Category k => (a -> b -> a) -> a -> Machine (k b) a
 scan func seed = construct $ go seed where
+  go cur = do
+    yield cur
+    next <- await
+    go $ func cur next
+
+-- |
+-- 'scan1' is a variant of 'scan' that has no starting value argument
+scan1 :: Category k => (a -> a -> a) -> Machine (k a) a
+scan1 func = construct $ await >>= go where
   go cur = do
     yield cur
     next <- await
