@@ -31,6 +31,7 @@ module Data.Machine.Process
   , takingWhile
   , buffered
   , fold
+  , fold1
   , scan
   , scan1
   , asParts
@@ -201,6 +202,11 @@ scan1 func = construct $ await >>= go where
 -- @
 fold :: Category k => (a -> b -> a) -> a -> Machine (k b) a
 fold func seed = scan func seed ~> final
+
+-- |
+-- 'fold1' is a variant of 'fold' that has no starting value argument
+fold1 :: Category k => (a -> a -> a) -> Machine (k a) a
+fold1 func = scan1 func ~> final
 
 -- | Break each input into pieces that are fed downstream
 -- individually.
