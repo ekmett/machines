@@ -43,6 +43,7 @@ module Data.Machine.Process
   , intersperse
   , largest
   , smallest
+  , sequencing
   ) where
 
 import Control.Applicative
@@ -291,3 +292,11 @@ largest = fold1 max
 -- Return the minimum value from the input
 smallest :: (Category k, Ord a) => Machine (k a) a
 smallest = fold1 min
+
+-- |
+-- Convert a stream of actions to a stream of values
+sequencing :: (Category k, Monad m) => MachineT m (k (m a)) a
+sequencing = repeatedly $ do
+  ma <- await
+  a  <- lift ma
+  yield a
