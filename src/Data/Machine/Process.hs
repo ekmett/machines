@@ -35,8 +35,8 @@ module Data.Machine.Process
   , asParts
   , sinkPart_
   , autoM
-  , last
-  , lastOr
+  , final
+  , finalOr
   ) where
 
 import Control.Applicative
@@ -48,7 +48,7 @@ import Data.Machine.Is
 import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Void
-import Prelude hiding ((.), id, last, mapM_)
+import Prelude hiding ((.), id, mapM_)
 
 infixr 9 <~
 infixl 9 ~>
@@ -113,7 +113,7 @@ droppingWhile p = before echo loop where
 
 -- | Chunk up the input into `n` element lists.
 --
--- Avoids returning empty lists and deals with the truncation of the last group.
+-- Avoids returning empty lists and deals with the truncation of the final group.
 buffered :: Int -> Process a [a]
 buffered = repeatedly . go [] where
   go [] 0  = stop
@@ -165,14 +165,14 @@ process f (MachineT m) = MachineT (liftM f' m) where
   f' Stop            = Stop
   f' (Await g kir h) = Await (process f . g . f kir) Refl (process f h)
 
--- | 
+-- |
 -- Construct a 'Process' from a left-scanning operation.
 --
 -- Like 'fold', but yielding intermediate values.
 --
 -- @
 -- 'scan' :: (a -> b -> a) -> a -> Process b a
--- @  
+-- @
 scan :: Category k => (a -> b -> a) -> a -> Machine (k b) a
 scan func seed = construct $ go seed where
   go cur = do
@@ -180,7 +180,7 @@ scan func seed = construct $ go seed where
     yield $ func cur next
     go $ func cur next
 
--- | 
+-- |
 -- Construct a 'Process' from a left-folding operation.
 --
 -- Like 'scan', but only yielding the final value.
@@ -220,26 +220,26 @@ autoM :: Monad m => (a -> m b) -> ProcessT m a b
 autoM f = repeatedly $ await >>= lift . f >>= yield
 
 -- |
--- Skip all but the last element of the input
+-- Skip all but the final element of the input
 --
 -- @
--- 'last' :: Process a a
+-- 'final' :: 'Process' a a
 -- @
-last :: Category k => Machine (k a) a
-last = construct $ await >>= go where
+final :: Category k => Machine (k a) a
+final = construct $ await >>= go where
   go prev = do
     next <- await <|> yield prev *> stop
     go next
 
 -- |
--- Skip all but the last element of the input.
+-- Skip all but the final element of the input.
 -- If the input is empty, the default value is emitted
 --
 -- @
--- 'lastOr' :: a -> Process a a
+-- 'finalOr' :: a -> 'Process' a a
 -- @
-lastOr :: Category k => a -> Machine (k a) a
-lastOr = construct . go where
+finalOr :: Category k => a -> Machine (k a) a
+finalOr = construct . go where
   go prev = do
     next <- await <|> yield prev *> stop
     go next
