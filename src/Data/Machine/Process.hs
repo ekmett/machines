@@ -42,6 +42,7 @@ module Data.Machine.Process
   , finalOr
   , intersperse
   , largest
+  , smallest
   ) where
 
 import Control.Applicative
@@ -285,3 +286,8 @@ intersperse sep = construct $ await >>= go where
 -- Return the maximum value from the input
 largest :: (Category k, Ord a) => Machine (k a) a
 largest = fold1 max
+
+-- |
+-- Return the minimum value from the input
+smallest :: (Category k, Ord a) => Machine (k a) a
+smallest = fold1 min
