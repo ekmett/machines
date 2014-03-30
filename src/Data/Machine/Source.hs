@@ -20,6 +20,7 @@ module Data.Machine.Source
   , cycled
   , cap
   , iterated
+  , replicated
   ) where
 
 import Control.Category
@@ -27,7 +28,7 @@ import Data.Foldable
 import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
-import Prelude ()
+import Prelude (Int)
 
 -------------------------------------------------------------------------------
 -- Source
@@ -69,3 +70,7 @@ iterated f x = construct (go x) where
   go a = do
     yield a
     go (f a)
+
+-- | 'replicated' @n x@ is a source of @x@ emitted @n@ time(s)
+replicated :: Int -> a -> Source a
+replicated n x = repeated x ~> taking n
