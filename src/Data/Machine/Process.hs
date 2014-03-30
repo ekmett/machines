@@ -41,6 +41,7 @@ module Data.Machine.Process
   , final
   , finalOr
   , intersperse
+  , largest
   ) where
 
 import Control.Applicative
@@ -279,3 +280,8 @@ intersperse sep = construct $ await >>= go where
     yield cur
     yield sep
     go next
+
+-- |
+-- Return the maximum value from the input
+largest :: (Category k, Ord a) => Machine (k a) a
+largest = fold1 max
