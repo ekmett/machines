@@ -34,6 +34,7 @@ module Data.Machine.Process
   , fold1
   , scan
   , scan1
+  , scanMap
   , asParts
   , sinkPart_
   , autoM
@@ -50,6 +51,7 @@ import Data.Foldable hiding (fold)
 import Data.Machine.Is
 import Data.Machine.Plan
 import Data.Machine.Type
+import Data.Monoid (Monoid(..))
 import Data.Void
 import Prelude hiding ((.), id, mapM_)
 
@@ -191,6 +193,12 @@ scan1 func = construct $ await >>= go where
     yield cur
     next <- await
     go $ func cur next
+
+-- |
+-- Like 'scan' only uses supplied function to map and uses Monoid for
+-- associative operation
+scanMap :: (Category k, Monoid b) => (a -> b) -> Machine (k a) b
+scanMap f = scan (\b a -> mappend b (f a)) mempty
 
 -- |
 -- Construct a 'Process' from a left-folding operation.
