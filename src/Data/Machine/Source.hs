@@ -19,6 +19,7 @@ module Data.Machine.Source
   , repeated
   , cycled
   , cap
+  , iterated
   ) where
 
 import Control.Category
@@ -60,3 +61,11 @@ source xs = construct (traverse_ yield xs)
 --
 cap :: Process a b -> Source a -> Source b
 cap l r = l <~ r
+
+-- | 'iterated' @f x@ returns an infinite source of repeated applications
+-- of @f@ to @x@
+iterated :: (a -> a) -> a -> Source a
+iterated f x = construct (go x) where
+  go a = do
+    yield a
+    go (f a)
