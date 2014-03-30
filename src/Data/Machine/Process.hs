@@ -36,6 +36,7 @@ module Data.Machine.Process
   , sinkPart_
   , autoM
   , last
+  , lastOr
   ) where
 
 import Control.Applicative
@@ -226,6 +227,19 @@ autoM f = repeatedly $ await >>= lift . f >>= yield
 -- @
 last :: Category k => Machine (k a) a
 last = construct $ await >>= go where
+  go prev = do
+    next <- await <|> yield prev *> stop
+    go next
+
+-- |
+-- Skip all but the last element of the input.
+-- If the input is empty, the default value is emitted
+--
+-- @
+-- 'lastOr' :: a -> Process a a
+-- @
+lastOr :: Category k => a -> Machine (k a) a
+lastOr = construct . go where
   go prev = do
     next <- await <|> yield prev *> stop
     go next
