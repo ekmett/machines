@@ -37,6 +37,7 @@ module Data.Machine.Process
   , autoM
   , final
   , finalOr
+  , intersperse
   ) where
 
 import Control.Applicative
@@ -242,4 +243,18 @@ finalOr :: Category k => a -> Machine (k a) a
 finalOr = construct . go where
   go prev = do
     next <- await <|> yield prev *> stop
+    go next
+
+-- |
+-- Intersperse an element between the elements of the input
+--
+-- @
+-- 'intersperse' :: a -> 'Process' a a
+-- @
+intersperse :: Category k => a -> Machine (k a) a
+intersperse sep = construct $ await >>= go where
+  go cur = do
+    next <- await <|> yield cur *> stop
+    yield cur
+    yield sep
     go next
