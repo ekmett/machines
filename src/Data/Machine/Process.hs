@@ -177,8 +177,8 @@ process f (MachineT m) = MachineT (liftM f' m) where
 scan :: Category k => (a -> b -> a) -> a -> Machine (k b) a
 scan func seed = construct $ go seed where
   go cur = do
+    yield cur
     next <- await
-    yield $ func cur next
     go $ func cur next
 
 -- |
