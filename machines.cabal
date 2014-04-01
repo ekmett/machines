@@ -81,3 +81,20 @@ test-suite doctests
     filepath >= 1.3 && < 1.4
   ghc-options: -Wall -Werror -threaded
   hs-source-dirs: tests
+
+benchmark benchmarks
+  default-language: Haskell2010
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   benchmarks
+  main-is:          Benchmarks.hs
+  ghc-options:      -O2 -rtsopts
+
+  build-depends:
+    base == 4.*,
+    conduit == 1.0.17.1,
+    criterion == 0.6.2.*,
+    hastache < 0.6,
+    machines,
+    mtl ==2.1.2,
+    pipes == 4.1.0,
+    statistics < 0.11
