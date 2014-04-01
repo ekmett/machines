@@ -21,6 +21,7 @@ module Data.Machine.Source
   , cap
   , iterated
   , replicated
+  , enumerateFromTo
   ) where
 
 import Control.Category
@@ -28,7 +29,7 @@ import Data.Foldable
 import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
-import Prelude (Int)
+import Prelude (Enum, Eq, Int, otherwise, succ, (==), (>>))
 
 -------------------------------------------------------------------------------
 -- Source
@@ -74,3 +75,10 @@ iterated f x = construct (go x) where
 -- | 'replicated' @n x@ is a source of @x@ emitted @n@ time(s)
 replicated :: Int -> a -> Source a
 replicated n x = repeated x ~> taking n
+
+-- | Enumerate from a value to a final value, inclusive, via 'succ'
+enumerateFromTo :: (Enum a, Eq a) => a -> a -> Source a
+enumerateFromTo start end = construct (go start) where
+  go i
+    | i == end  = yield i
+    | otherwise = yield i >> go (succ i)
