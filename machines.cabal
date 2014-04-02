@@ -87,7 +87,7 @@ benchmark benchmarks
   type:             exitcode-stdio-1.0
   hs-source-dirs:   benchmarks
   main-is:          Benchmarks.hs
-  ghc-options:      -O2 -rtsopts
+  ghc-options:      -O2 -rtsopts -threaded
 
   build-depends:
     base == 4.*,
@@ -95,6 +95,6 @@ benchmark benchmarks
     criterion == 0.6.2.*,
     hastache < 0.6,
     machines,
-    mtl ==2.1.2,
+    mtl == 2.1.2,
     pipes == 4.1.0,
     statistics < 0.11
