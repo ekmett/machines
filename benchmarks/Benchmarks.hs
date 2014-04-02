@@ -32,4 +32,9 @@ main =
       , bench "pipes" $ whnf drainP (P.map (+1))
       , bench "conduit" $ whnf drainC (C.map (+1))
       ]
+  , bgroup "drop"
+      [ bench "machines" $ whnf drainM (M.dropping value)
+      , bench "pipes" $ whnf drainP (P.drop value)
+      , bench "conduit" $ whnf drainC (C.drop value)
+      ]
   ]
