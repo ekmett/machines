@@ -37,4 +37,8 @@ main =
       , bench "pipes" $ whnf drainP (P.drop value)
       , bench "conduit" $ whnf drainC (C.drop value)
       ]
+  , bgroup "dropWhile"
+      [ bench "machines" $ whnf drainM (M.droppingWhile (<= value))
+      , bench "pipes" $ whnf drainP (P.dropWhile (<= value))
+      ]
   ]
