@@ -59,4 +59,8 @@ main =
       [ bench "machines" $ whnf drainM (M.takingWhile (<= value))
       , bench "pipes" $ whnf drainP (P.takeWhile (<= value))
       ]
+  , bgroup "fold"
+      [ bench "machines" $ whnf drainM (M.fold (+) 0)
+      , bench "pipes" $ whnf (P.fold (+) 0 id) sourceP
+      ]
   ]
