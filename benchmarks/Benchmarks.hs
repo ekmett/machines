@@ -1,5 +1,6 @@
 module Main (main) where
 
+import Control.Monad (void)
 import Control.Monad.Identity
 import Criterion.Main
 import qualified Data.Conduit      as C
@@ -19,6 +20,9 @@ drainP p = runIdentity $ P.runEffect $ P.for (sourceP P.>-> p) P.discard
 
 drainC :: C.Conduit Int Identity a -> ()
 drainC c = runIdentity $ (sourceC C.$= c) C.$$ C.sinkNull
+
+drainSC :: C.Sink Int Identity b -> ()
+drainSC c = runIdentity $ void $ sourceC C.$$ c
 
 sourceM = M.enumerateFromTo 1 value
 sourceC = C.enumFromTo 1 value
@@ -45,5 +49,10 @@ main =
       [ bench "machines" $ whnf drainM (M.scan (+) 0)
       , bench "pipes" $ whnf drainP (P.scan (+) 0 id)
       , bench "conduit" $ whnf drainC (C.scanl (\a s -> let b = a+s in (b,b)) 0)
+      ]
+  , bgroup "take"
+      [ bench "machines" $ whnf drainM (M.taking value)
+      , bench "pipes" $ whnf drainP (P.take value)
+      , bench "conduit" $ whnf drainSC (C.take value)
       ]
   ]
