@@ -189,7 +189,7 @@ scan func seed = construct $ go seed where
   go cur = do
     yield cur
     next <- await
-    go $ func cur next
+    go $! func cur next
 
 -- |
 -- 'scan1' is a variant of 'scan' that has no starting value argument
@@ -198,7 +198,7 @@ scan1 func = construct $ await >>= go where
   go cur = do
     yield cur
     next <- await
-    go $ func cur next
+    go $! func cur next
 
 -- |
 -- Like 'scan' only uses supplied function to map and uses Monoid for
