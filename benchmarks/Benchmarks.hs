@@ -55,4 +55,8 @@ main =
       , bench "pipes" $ whnf drainP (P.take value)
       , bench "conduit" $ whnf drainSC (C.take value)
       ]
+  , bgroup "takeWhile"
+      [ bench "machines" $ whnf drainM (M.takingWhile (<= value))
+      , bench "pipes" $ whnf drainP (P.takeWhile (<= value))
+      ]
   ]
