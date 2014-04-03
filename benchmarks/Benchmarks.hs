@@ -41,4 +41,9 @@ main =
       [ bench "machines" $ whnf drainM (M.droppingWhile (<= value))
       , bench "pipes" $ whnf drainP (P.dropWhile (<= value))
       ]
+  , bgroup "scan"
+      [ bench "machines" $ whnf drainM (M.scan (+) 0)
+      , bench "pipes" $ whnf drainP (P.scan (+) 0 id)
+      , bench "conduit" $ whnf drainC (C.scanl (\a s -> let b = a+s in (b,b)) 0)
+      ]
   ]
