@@ -27,7 +27,7 @@ sourceP = P.each [1..value]
 main :: IO ()
 main =
   defaultMain
-  [ bgroup "mapping"
+  [ bgroup "map"
       [ bench "machines" $ whnf drainM (M.auto (+1))
       , bench "pipes" $ whnf drainP (P.map (+1))
       , bench "conduit" $ whnf drainC (C.map (+1))
