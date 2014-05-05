@@ -25,6 +25,8 @@ A port of this design to scala is available from runarorama/scala-machines
 
 Runar's slides are also available from https://dl.dropbox.com/u/4588997/Machines.pdf
 
+Some worked examples are here https://github.com/alanz/machines-play
+
 Contact Information
 -------------------
 
