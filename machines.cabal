@@ -46,6 +46,7 @@ library
 
   exposed-modules:
     Data.Machine
+    Data.Machine.Examples
     Data.Machine.Is
     Data.Machine.Fanout
     Data.Machine.Mealy
