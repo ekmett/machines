@@ -1,0 +1,30 @@
+name:          machines-examples
+category:      Control, Enumerator
+version:       0.1
+license:       BSD3
+cabal-version: >= 1.10
+license-file:  LICENSE
+author:        Josh Cough
+maintainer:    Edward A. Kmett <ekmett@gmail.com>
+stability:     provisional
+homepage:      http://github.com/ekmett/machines/
+bug-reports:   http://github.com/ekmett/machines/issues
+copyright:     Copyright (C) 2014 Edward A. Kmett
+synopsis:      Networked stream transducers
+description:   machines examples
+
+build-type:    Simple
+tested-with:   GHC == 7.4.1
+
+source-repository head
+  type: git
+  location: git://github.com/ekmett/machines.git
+
+library
+  build-depends:
+    base         == 4.*,
+    machines     == 0.4,
+    mtl          >= 2 && < 2.2
+
+  exposed-modules:
+    Examples

@@ -24,9 +24,11 @@ module Data.Machine.Plan
   , runPlan
   , PlanT(..)
   , yield
+  , maybeYield
   , await
   , stop
   , awaits
+  , exhaust
   ) where
 
 import Control.Applicative
@@ -160,6 +162,10 @@ instance MonadError e m => MonadError e (PlanT k o m) where
 yield :: o -> Plan k o ()
 yield o = PlanT (\kp ke _ _ -> ke o (kp ()))
 
+-- | Like yield, except stops if there is no value to yield. 
+maybeYield :: Maybe o -> Plan k o ()
+maybeYield = maybe stop yield
+
 -- | Wait for input.
 --
 -- @'await' = 'awaits' 'id'@
@@ -179,3 +185,7 @@ awaits h = PlanT $ \kp _ kr -> kr kp h
 -- | @'stop' = 'empty'@
 stop :: Plan k o a
 stop = empty
+
+-- | Run a monadic action repeatedly yielding its results, until it returns Nothing.
+exhaust :: Monad m => m (Maybe a) -> PlanT k a m ()
+exhaust f = do (lift f >>= maybeYield); exhaust f

@@ -1,10 +1,10 @@
 name:          machines
 category:      Control, Enumerator
-version:       0.3
+version:       0.4
 license:       BSD3
 cabal-version: >= 1.10
 license-file:  LICENSE
-author:        Edward A. Kmett, Rúnar Bjarnason
+author:        Edward A. Kmett, Rúnar Bjarnason, Josh Cough
 maintainer:    Edward A. Kmett <ekmett@gmail.com>
 stability:     provisional
 homepage:      http://github.com/ekmett/machines/
@@ -26,6 +26,9 @@ extra-source-files:
   config
   README.markdown
   CHANGELOG.markdown
+  examples/LICENSE
+  examples/machines-examples.cabal
+  examples/*.hs
 
 source-repository head
   type: git
@@ -46,7 +49,6 @@ library
 
   exposed-modules:
     Data.Machine
-    Data.Machine.Examples
     Data.Machine.Is
     Data.Machine.Fanout
     Data.Machine.Mealy
