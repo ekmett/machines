@@ -88,7 +88,7 @@ printLinesWithLineNumbers path = runT_ (t ~> printProcess) where
   t :: TeeT IO Int String String
   t = tee (source [1..]) (getFileLines path echo) lineNumsT
   lineNumsT :: MachineT IO (T Integer String) String
-  lineNumsT = repeatedly $ mergeT $ \i s -> show i ++ ": " ++ s
+  lineNumsT = repeatedly $ zipWithT $ \i s -> show i ++ ": " ++ s
 
 {-
 def lineWordCount(fileName: String) =

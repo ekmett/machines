@@ -18,7 +18,7 @@ module Data.Machine.Tee
   , tee
   , addL, addR
   , capL, capR
-  , mergeT
+  , zipWithT
   ) where
 
 import Data.Machine.Is
@@ -86,6 +86,6 @@ cappedT L = Refl
 {-# INLINE cappedT #-}
 
 -- | wait for both the left and the right sides of a T and then merge them with f.
-mergeT :: Monad m => (a -> b -> c) -> PlanT (T a b) c m ()
-mergeT f = do { a <- awaits L; b <- awaits R; yield $ f a b }
-{-# INLINE mergeT #-}
+zipWithT :: Monad m => (a -> b -> c) -> PlanT (T a b) c m ()
+zipWithT f = do { a <- awaits L; b <- awaits R; yield $ f a b }
+{-# INLINE zipWithT #-}
