@@ -43,8 +43,8 @@ library
     pointed      >= 3,
     profunctors  >= 3,
     semigroups   >= 0.8.3,
-    transformers == 0.3.*,
-    mtl          >= 2 && < 2.2,
+    transformers >= 0.3 && < 0.5,
+    mtl          >= 2 && < 2.3,
     void         >= 0.6.1 && < 0.7
 
   exposed-modules:
