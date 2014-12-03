@@ -1,6 +1,6 @@
 name:          machines
 category:      Control, Enumerator
-version:       0.4
+version:       0.4.1
 license:       BSD3
 cabal-version: >= 1.10
 license-file:  LICENSE
@@ -17,7 +17,7 @@ description:
   Rúnar Bjarnason's talk on machines can be downloaded from:
   <https://dl.dropbox.com/u/4588997/Machines.pdf>
 build-type:    Custom
-tested-with:   GHC == 7.4.1
+tested-with:   GHC == 7.4.1, GHC == 7.8.3
 extra-source-files:
   .travis.yml
   .ghci
@@ -37,15 +37,15 @@ source-repository head
 library
   build-depends:
     base         == 4.*,
-    comonad      >= 3,
-    containers   >= 0.3 && < 0.6,
-    free         >= 3.1.1,
-    pointed      >= 3,
-    profunctors  >= 3,
-    semigroups   >= 0.8.3,
-    transformers == 0.3.*,
-    mtl          >= 2 && < 2.2,
-    void         >= 0.6.1 && < 0.7
+    comonad      >= 3     && < 5,
+    containers   >= 0.3   && < 0.6,
+    free         >= 3.1.1 && < 5,
+    pointed      >= 3     && < 5,
+    profunctors  >= 3     && < 5,
+    semigroups   >= 0.8.3 && < 1,
+    transformers >= 0.3   && < 0.5,
+    mtl          >= 2     && < 2.2,
+    void         >= 0.6.1 && < 1
 
   exposed-modules:
     Data.Machine
