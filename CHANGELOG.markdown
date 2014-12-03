@@ -1,3 +1,7 @@
+0.4.1
+-----
+* Support `void` 0.7, fixed upper bounds on dependencies going forward.
+
 0.2.5
 -----
 * Added `deconstruct`, `tagDone` and `finishWith`
