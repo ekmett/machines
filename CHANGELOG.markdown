@@ -2,6 +2,13 @@
 -----
 * Support `void` 0.7, fixed upper bounds on dependencies going forward.
 
+0.4.0.1
+-----
+* Bumped the bounds for `mtl` and `transformers`
+
+0.4
+-----
+
 0.2.5
 -----
 * Added `deconstruct`, `tagDone` and `finishWith`
