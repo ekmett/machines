@@ -77,7 +77,7 @@ type Process a b = Machine (Is a) b
 -- 'Monad' @m@.
 type ProcessT m a b = MachineT m (Is a) b
 
--- | An 'Automaton' is can be automatically lifted into a 'Process'
+-- | An 'Automaton' can be automatically lifted into a 'Process'
 class Automaton k where
   auto :: k a b -> Process a b
 
