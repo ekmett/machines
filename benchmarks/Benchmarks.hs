@@ -4,6 +4,7 @@ import Control.Monad (void)
 import Control.Monad.Identity
 import Criterion.Main
 import qualified Data.Conduit      as C
+import qualified Data.Conduit.Combinators as CC
 import qualified Data.Conduit.List as C
 import qualified Data.Machine      as M
 import qualified Pipes             as P
@@ -44,11 +45,12 @@ main =
   , bgroup "dropWhile"
       [ bench "machines" $ whnf drainM (M.droppingWhile (<= value))
       , bench "pipes" $ whnf drainP (P.dropWhile (<= value))
+      , bench "conduit" $ whnf drainC (CC.dropWhile (<= value))
       ]
   , bgroup "scan"
       [ bench "machines" $ whnf drainM (M.scan (+) 0)
       , bench "pipes" $ whnf drainP (P.scan (+) 0 id)
-      , bench "conduit" $ whnf drainC (C.scanl (\a s -> let b = a+s in (b,b)) 0)
+      , bench "conduit" $ whnf drainC (CC.scanl (+) 0)
       ]
   , bgroup "take"
       [ bench "machines" $ whnf drainM (M.taking value)
@@ -58,9 +60,11 @@ main =
   , bgroup "takeWhile"
       [ bench "machines" $ whnf drainM (M.takingWhile (<= value))
       , bench "pipes" $ whnf drainP (P.takeWhile (<= value))
+      , bench "conduit" $ whnf drainSC (CC.takeWhile (<= value) C.=$= C.sinkNull)
       ]
   , bgroup "fold"
       [ bench "machines" $ whnf drainM (M.fold (+) 0)
       , bench "pipes" $ whnf (P.fold (+) 0 id) sourceP
+      , bench "conduit" $ whnf drainSC (C.fold (+) 0)
       ]
   ]
