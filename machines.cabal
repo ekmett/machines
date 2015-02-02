@@ -95,6 +95,7 @@ benchmark benchmarks
   build-depends:
     base == 4.*,
     conduit == 1.0.17.1,
+    conduit-combinators == 0.2.5.2,
     criterion == 0.6.2.*,
     hastache < 0.6,
     machines,
