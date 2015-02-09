@@ -62,7 +62,7 @@ newtype PlanT k o m a = PlanT
 -- | A @'Plan' k o a@ is a specification for a pure 'Machine', that reads inputs selected by @k@
 -- with types based on @i@, writes values of type @o@, and has intermediate results of type @a@.
 --
--- A @'PlanT' k o a@ can be used as a @'PlanT' k o m a@ for any @'Monad' m@.
+-- A @'Plan' k o a@ can be used as a @'PlanT' k o m a@ for any @'Monad' m@.
 --
 -- It is perhaps easier to think of 'Plan' in its un-cps'ed form, which would
 -- look like:
