@@ -42,6 +42,8 @@ module Data.Machine.Type
 
   , stopped
 
+  , stepMachine
+
   -- * Applicative Machines
   , Appliance(..)
   ) where
@@ -52,8 +54,9 @@ import Control.Monad (liftM)
 import Data.Foldable
 import Data.Functor.Identity
 import Data.Machine.Plan
-import Data.Monoid
+import Data.Monoid hiding ((<>))
 import Data.Pointed
+import Data.Semigroup
 import Prelude hiding ((.),id)
 
 -------------------------------------------------------------------------------
@@ -90,6 +93,10 @@ runMachine = runIdentity . runMachineT
 encased :: Monad m => Step k o (MachineT m k o) -> MachineT m k o
 encased = MachineT . return
 
+-- | Transform a 'Machine' by looking at a single step of that machine.
+stepMachine :: Monad m => MachineT m k o -> (Step k o (MachineT m k o) -> MachineT m k' o') -> MachineT m k' o'
+stepMachine m f = MachineT (runMachineT . f =<< runMachineT m)
+
 instance Monad m => Functor (MachineT m k) where
   fmap f (MachineT m) = MachineT (liftM f' m) where
     f' (Yield o xs)    = Yield (f o) (f <$> xs)
@@ -98,6 +105,16 @@ instance Monad m => Functor (MachineT m k) where
 
 instance Monad m => Pointed (MachineT m k) where
   point = repeatedly . yield
+
+instance Monad m => Semigroup (MachineT m k o) where
+  a <> b = stepMachine a $ \step -> case step of
+    Yield o a'    -> encased (Yield o (mappend a' b))
+    Await k kir e -> encased (Await (\x -> k x <> b) kir (e <> b))
+    Stop          -> b
+
+instance Monad m => Monoid (MachineT m k o) where
+  mempty        = stopped
+  mappend       = (<>)
 
 -- | An input type that supports merging requests from multiple machines.
 class Appliance k where
