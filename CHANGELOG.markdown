@@ -1,3 +1,7 @@
+0.4.2
+-----
+* Add `Monoid` and `Semigroups` instances for `MachineT`
+
 0.4.1
 -----
 * Support `void` 0.7, fixed upper bounds on dependencies going forward.

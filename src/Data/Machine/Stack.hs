@@ -48,17 +48,15 @@ pop = awaits Pop
 -- of pushing inputs back.
 stack :: Monad m => MachineT m k a -> MachineT m (Stack a) o -> MachineT m k o
 stack up down =
-  advance1 down $ \stepD     ->
+  stepMachine down $ \stepD     ->
   case stepD of
     Stop                     -> stopped
     Yield o down'            -> encased (Yield o (up `stack` down'))
     Await down' (Push a) _   -> encased (Yield a up) `stack` down' ()
     Await down' Pop ffD      ->
-      advance1 up $ \stepU   ->
+      stepMachine up $ \stepU   ->
       case stepU of
         Stop                 -> stopped `stack` ffD
         Yield o up'          -> up'     `stack` down' o
         Await up' req ffU    -> encased (Await (\a -> up' a `stack` encased stepD) req
                                                (      ffU   `stack` encased stepD))
-  where
-  advance1 m f = MachineT (runMachineT m >>= runMachineT . f)
