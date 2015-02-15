@@ -61,6 +61,7 @@ library
     Data.Machine.Type
     Data.Machine.Wye
     Data.Machine.Group
+    Data.Machine.Pipe
 
   default-language: Haskell2010
   other-extensions:
