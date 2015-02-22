@@ -6,6 +6,7 @@ import Control.Applicative
 import Control.Exception
 import Control.Monad.Trans
 import Data.Machine
+import Data.Machine.Group
 import System.IO
 
 -- this slurp slurps until an eof exception is raised.
@@ -89,6 +90,17 @@ printLinesWithLineNumbers path = runT_ (t ~> printProcess) where
   t = tee (source [1..]) (getFileLines path echo) lineNumsT
   lineNumsT :: MachineT IO (T Integer String) String
   lineNumsT = repeatedly $ zipWithT $ \i s -> show i ++ ": " ++ s
+
+uniq :: Bool
+uniq = run (supply xs uniqMachine) == [1,2,3] where
+  -- | Unix's "uniq" command using groupingOn
+  -- (==)  means "groups are contiguous values"
+  -- final means "run the 'final' machine over each group"
+  uniqMachine :: (Monad m, Eq a) => ProcessT m a a
+  uniqMachine = groupingOn (==) final 
+
+  xs :: [Int]
+  xs = [1,2,2,3,3,3]
 
 {-
 def lineWordCount(fileName: String) =
