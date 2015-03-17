@@ -1,3 +1,7 @@
+0.5
+---
+* Major bug fix (and semantic change) for `Plan`'s `(<|>)`.
+
 0.4.2
 -----
 * Add `Monoid` and `Semigroups` instances for `MachineT`
