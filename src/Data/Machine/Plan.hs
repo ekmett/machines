@@ -103,7 +103,7 @@ instance Applicative (PlanT k o m) where
 instance Alternative (PlanT k o m) where
   empty = PlanT $ \_ _ _ kf -> kf
   {-# INLINE empty #-}
-  PlanT m <|> PlanT n = PlanT $ \kp ke kr kf -> m kp ke (\ks kir _ -> kr ks kir (n kp ke kr kf)) (n kp ke kr kf)
+  PlanT m <|> PlanT n = PlanT $ \kp ke kr kf -> m kp ke kr (n kp ke kr kf)
   {-# INLINE (<|>) #-}
 
 instance Monad (PlanT k o m) where
