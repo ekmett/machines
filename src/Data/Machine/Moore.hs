@@ -30,6 +30,7 @@ import Data.Machine.Process
 import Data.Monoid
 import Data.Pointed
 import Data.Profunctor
+import Prelude
 
 -- | 'Moore' machines
 data Moore a b = Moore b (a -> Moore a b)

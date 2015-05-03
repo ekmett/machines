@@ -50,16 +50,16 @@ module Data.Machine.Process
   ) where
 
 import Control.Applicative
-import Control.Category
+import Control.Category (Category)
 import Control.Monad (liftM, when, replicateM_)
 import Control.Monad.Trans.Class
 import Data.Foldable hiding (fold)
 import Data.Machine.Is
 import Data.Machine.Plan
 import Data.Machine.Type
-import Data.Monoid (Monoid(..))
+import Data.Monoid
 import Data.Void
-import Prelude hiding ((.), id, mapM_)
+import Prelude
 
 infixr 9 <~
 infixl 9 ~>
@@ -225,7 +225,7 @@ fold1 func = scan1 func ~> final
 -- | Break each input into pieces that are fed downstream
 -- individually.
 asParts :: Foldable f => Process (f a) a
-asParts = repeatedly $ await >>= mapM_ yield
+asParts = repeatedly $ await >>= traverse_ yield
 
 -- | @sinkPart_ toParts sink@ creates a process that uses the
 -- @toParts@ function to break input into a tuple of @(passAlong,

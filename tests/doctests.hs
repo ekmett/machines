@@ -7,6 +7,7 @@ import Data.List
 import System.Directory
 import System.FilePath
 import Test.DocTest
+import Prelude
 
 main :: IO ()
 main = getSources >>= \sources -> doctest $
