@@ -16,6 +16,7 @@ module Data.Machine.Is
 
 import Control.Category
 import Data.Monoid
+import Prelude
 
 -- | Witnessed type equality
 data Is a b where
