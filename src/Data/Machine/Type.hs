@@ -43,6 +43,7 @@ module Data.Machine.Type
   , stopped
 
   , stepMachine
+  , andThen
 
   -- * Applicative Machines
   , Appliance(..)
@@ -259,7 +260,7 @@ stopped = encased Stop
 --- result 'Plan'. This may be used when monadic binding of results is
 --- required.
 deconstruct :: Monad m => MachineT m k (Either a o) -> PlanT k o m a
-deconstruct m = PlanT $ \r y a f -> 
+deconstruct m = PlanT $ \r y a f ->
   let aux k = runPlanT (deconstruct k) r y a f
   in runMachineT m >>= \v -> case v of
        Stop -> f
@@ -298,3 +299,21 @@ finishWith f = fmap aux
 sink :: Monad m => (forall o. PlanT k o m a) -> MachineT m k a
 sink m = runPlanT m (\a -> Yield a Stop) id (Await id) Stop
 -}
+
+-------------------------------------------------------------------------------
+-- AndThen
+-------------------------------------------------------------------------------
+
+-- | Use this function to combine to machines in sequence. This function will
+-- construct a machine that run first machine until it stops and then continue
+-- with second machine.
+--
+-- >>> runT $ supply [0..10] (dropping 5 `andThen` taking 4)
+-- [5,6,7,8,9,10]
+andThen :: Monad m => MachineT m (k a) b -> MachineT m (k a) b -> MachineT m (k a) b
+andThen s1 s2 = MachineT $ do
+    step <- runMachineT s1
+    case step of
+      Stop         -> runMachineT s2
+      Yield o r    -> return $ Yield o (andThen r s2)
+      Await f kt r -> return $ Await (flip andThen s2 . f) kt (andThen r s2)
