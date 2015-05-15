@@ -10,6 +10,7 @@ import Data.Maybe (catMaybes)
 import Data.Monoid
 import Data.Semigroup (Semigroup(sconcat))
 import Data.List.NonEmpty (NonEmpty((:|)))
+import Prelude
 
 -- | Feed a value to a 'ProcessT' at an 'Await' 'Step'. If the
 -- 'ProcessT' is awaiting a value, then its next step is
