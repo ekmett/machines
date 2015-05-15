@@ -1,3 +1,8 @@
+0.5.1
+-----
+* `profunctors` 5 support
+* GHC 7.10 warnings have been cleaned up
+
 0.5
 ---
 * Major bug fix (and semantic change) for `Plan`'s `(<|>)`.
