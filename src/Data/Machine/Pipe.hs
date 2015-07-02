@@ -119,13 +119,18 @@ fb' +>> pm = MachineT $ runMachineT pm >>= \p ->
     Await k (Request b') _ -> runMachineT (fb' b' >>~ k)
     Await k (Respond c) ff -> return $ Await (\c' -> fb' +>> k c') (Respond c) (fb' +>> ff)
 
+-- | It is impossible for an `Exchange` to hold a `Void` value.
+absurdExchange :: Exchange Void a b Void t -> c
+absurdExchange (Request z) = absurd z
+absurdExchange (Respond z) = absurd z
+                              
 -- | Run a self-contained 'Effect', converting it back to the base monad.
 runEffect :: Monad m => Effect m o -> m [o]
 runEffect (MachineT m) = m >>= \v ->
   case v of
     Stop      -> return []
     Yield o n -> liftM (o:) (runEffect n)
-    _         -> error "Data.Machine.Pipe.runEffect: impossible situation"
+    Await _ y _  -> absurdExchange y
 
 -- | Like 'runEffect' but discarding any produced value.
 runEffect_ :: Monad m => Effect m o -> m ()
@@ -133,4 +138,4 @@ runEffect_ (MachineT m) = m >>= \v ->
   case v of
     Stop      -> return ()
     Yield _ n -> runEffect_ n
-    _         -> error "Data.Machine.Pipe.runEffect_: impossible situation"
+    Await _ y _   -> absurdExchange y
