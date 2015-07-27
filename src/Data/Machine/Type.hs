@@ -40,6 +40,8 @@ module Data.Machine.Type
   , fitM
   , pass
 
+  , starve
+  
   , stopped
 
   , stepMachine
@@ -243,6 +245,14 @@ pass :: k o -> Machine k o
 pass k = repeatedly $ do
   a <- awaits k
   yield a
+
+
+-- | Run a machine with no input until it stops, then behave as another machine.
+starve :: Monad m => MachineT m k0 b -> MachineT m k b -> MachineT m k b
+starve m cont = MachineT $ runMachineT m >>= \v -> case v of
+  Stop            -> runMachineT cont -- Continue with cont instead of stopping
+  Yield o r       -> return $ Yield o (starve r cont)
+  Await _ _ r     -> runMachineT (starve r cont)
 
 -- | This is a stopped 'Machine'
 stopped :: Machine k b
