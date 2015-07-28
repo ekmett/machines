@@ -49,12 +49,6 @@ partitioning s = go s where
         -- That means input [Right 1, Left ()] is different to [Right 1]
         g (Left  ()) = starve r $ go s
 
--- | Run a machine with no input until it stops, then behave as another machine..
-starve :: Monad m => ProcessT m a b -> MachineT m k b -> MachineT m k b
-starve m cont = MachineT $ runMachineT m >>= \v -> case v of
-  Stop            -> runMachineT cont -- Continue with cont instead of stopping
-  Yield o r       -> return $ Yield o (starve r cont)
-  Await _ Refl r  -> runMachineT (starve r cont)
 
 -- | Read inputs until a condition is met, then behave as cont with
 -- | input matching condition as first input of cont.
