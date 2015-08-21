@@ -28,6 +28,7 @@ module Data.Machine.Type
   , construct
   , repeatedly
   , before
+  , preplan
 --  , sink
 
   -- ** Deconstructing machines back into plans
@@ -227,6 +228,14 @@ repeatedly m = r where
 before :: Monad m => MachineT m k o -> PlanT k o m a -> MachineT m k o
 before (MachineT n) m = MachineT $ runPlanT m
   (const n)
+  (\o k -> return (Yield o (MachineT k)))
+  (\f k g -> return (Await (MachineT . f) k (MachineT g)))
+  (return Stop)
+
+-- | Incorporate a 'Plan' into the resulting machine.
+preplan :: Monad m => PlanT k o m (MachineT m k o) -> MachineT m k o
+preplan m = MachineT $ runPlanT m
+  runMachineT
   (\o k -> return (Yield o (MachineT k)))
   (\f k g -> return (Await (MachineT . f) k (MachineT g)))
   (return Stop)
