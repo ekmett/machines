@@ -1,7 +1,11 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+#ifndef MIN_VERSION_base
+#define MIN_VERSION_base(x,y,z) 0
+#endif
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Process
@@ -61,6 +65,9 @@ import Data.Machine.Type
 import Data.Monoid
 import Data.Void
 import Prelude
+#if !MIN_VERSION_base(4,0,8)
+  hiding (foldr)
+#endif
 
 infixr 9 <~
 infixl 9 ~>
