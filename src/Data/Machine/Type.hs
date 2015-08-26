@@ -28,6 +28,7 @@ module Data.Machine.Type
   , construct
   , repeatedly
   , before
+  , preplan
 --  , sink
 
   -- ** Deconstructing machines back into plans
@@ -40,6 +41,8 @@ module Data.Machine.Type
   , fitM
   , pass
 
+  , starve
+  
   , stopped
 
   , stepMachine
@@ -229,6 +232,14 @@ before (MachineT n) m = MachineT $ runPlanT m
   (\f k g -> return (Await (MachineT . f) k (MachineT g)))
   (return Stop)
 
+-- | Incorporate a 'Plan' into the resulting machine.
+preplan :: Monad m => PlanT k o m (MachineT m k o) -> MachineT m k o
+preplan m = MachineT $ runPlanT m
+  runMachineT
+  (\o k -> return (Yield o (MachineT k)))
+  (\f k g -> return (Await (MachineT . f) k (MachineT g)))
+  (return Stop)
+
 -- | Given a handle, ignore all other inputs and just stream input from that handle.
 --
 -- @
@@ -243,6 +254,14 @@ pass :: k o -> Machine k o
 pass k = repeatedly $ do
   a <- awaits k
   yield a
+
+
+-- | Run a machine with no input until it stops, then behave as another machine.
+starve :: Monad m => MachineT m k0 b -> MachineT m k b -> MachineT m k b
+starve m cont = MachineT $ runMachineT m >>= \v -> case v of
+  Stop            -> runMachineT cont -- Continue with cont instead of stopping
+  Yield o r       -> return $ Yield o (starve r cont)
+  Await _ _ r     -> runMachineT (starve r cont)
 
 -- | This is a stopped 'Machine'
 stopped :: Machine k b
