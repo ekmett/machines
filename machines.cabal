@@ -59,7 +59,7 @@ library
     Data.Machine.Source
     Data.Machine.Stack
     Data.Machine.Tee
-    Data.Machine.Trans
+    Data.Machine.Lift
     Data.Machine.Type
     Data.Machine.Wye
     Data.Machine.Group

@@ -1,6 +1,6 @@
 -- | Utilities for working with machines that run in transformed monads,
 -- inspired by @Pipes.Lift@.
-module Data.Machine.Trans (execStateM, catchExcept, runReaderM) where
+module Data.Machine.Lift (execStateM, catchExcept, runReaderM) where
 
 import Control.Monad.Trans.State.Strict
 import Control.Monad.Trans.Reader
