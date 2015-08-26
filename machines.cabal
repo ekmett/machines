@@ -52,14 +52,15 @@ library
     Data.Machine
     Data.Machine.Is
     Data.Machine.Fanout
+    Data.Machine.Lift
     Data.Machine.Mealy
     Data.Machine.Moore
     Data.Machine.Process
     Data.Machine.Plan
+    Data.Machine.Runner
     Data.Machine.Source
     Data.Machine.Stack
     Data.Machine.Tee
-    Data.Machine.Lift
     Data.Machine.Type
     Data.Machine.Wye
     Data.Machine.Group
