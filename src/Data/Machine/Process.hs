@@ -1,6 +1,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Process
@@ -155,12 +156,19 @@ mp <~ ma = MachineT $ runMachineT mp >>= \v -> case v of
 ma ~> mp = mp <~ ma
 
 -- | Feed a 'Process' some input.
-supply :: Monad m => [a] -> ProcessT m a b -> ProcessT m a b
-supply []         m = m
-supply xxs@(x:xs) m = MachineT $ runMachineT m >>= \v -> case v of
-  Stop -> return Stop
-  Await f Refl _ -> runMachineT $ supply xs (f x)
-  Yield o k -> return $ Yield o (supply xxs k)
+supply :: forall f m a b . (Foldable f, Monad m) => f a -> ProcessT m a b -> ProcessT m a b
+supply xs = foldr go id xs
+    where
+      go :: a ->
+            (ProcessT m a b -> ProcessT m a b) ->
+            ProcessT m a b ->
+            ProcessT m a b
+      go x r m = MachineT $ do
+         v <- runMachineT m
+         case v of
+           Stop -> return Stop
+           Await f Refl _ -> runMachineT $ r (f x)
+           Yield o k -> return $ Yield o (go x r k)
 
 -- |
 -- Convert a machine into a process, with a little bit of help.
