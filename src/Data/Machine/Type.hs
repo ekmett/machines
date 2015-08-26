@@ -42,7 +42,7 @@ module Data.Machine.Type
   , pass
 
   , starve
-  
+
   , stopped
 
   , stepMachine
@@ -59,6 +59,7 @@ import Data.Functor.Identity
 import Data.Machine.Plan
 import Data.Monoid hiding ((<>))
 import Data.Pointed
+import Data.Profunctor.Unsafe ((#.))
 import Data.Semigroup
 import Prelude hiding ((.),id)
 
@@ -94,11 +95,11 @@ runMachine = runIdentity . runMachineT
 
 -- | Pack a 'Step' of a 'Machine' into a 'Machine'.
 encased :: Monad m => Step k o (MachineT m k o) -> MachineT m k o
-encased = MachineT . return
+encased = MachineT #. return
 
 -- | Transform a 'Machine' by looking at a single step of that machine.
 stepMachine :: Monad m => MachineT m k o -> (Step k o (MachineT m k o) -> MachineT m k' o') -> MachineT m k' o'
-stepMachine m f = MachineT (runMachineT . f =<< runMachineT m)
+stepMachine m f = MachineT (runMachineT #. f =<< runMachineT m)
 
 instance Monad m => Functor (MachineT m k) where
   fmap f (MachineT m) = MachineT (liftM f' m) where
@@ -210,7 +211,7 @@ construct :: Monad m => PlanT k o m a -> MachineT m k o
 construct m = MachineT $ runPlanT m
   (const (return Stop))
   (\o k -> return (Yield o (MachineT k)))
-  (\f k g -> return (Await (MachineT . f) k (MachineT g)))
+  (\f k g -> return (Await (MachineT #. f) k (MachineT g)))
   (return Stop)
 
 -- | Generates a model that runs a machine until it stops, then start it up again.
@@ -221,7 +222,7 @@ repeatedly m = r where
   r = MachineT $ runPlanT m
     (const (runMachineT r))
     (\o k -> return (Yield o (MachineT k)))
-    (\f k g -> return (Await (MachineT . f) k (MachineT g)))
+    (\f k g -> return (Await (MachineT #. f) k (MachineT g)))
     (return Stop)
 
 -- | Evaluate a machine until it stops, and then yield answers according to the supplied model.
@@ -229,7 +230,7 @@ before :: Monad m => MachineT m k o -> PlanT k o m a -> MachineT m k o
 before (MachineT n) m = MachineT $ runPlanT m
   (const n)
   (\o k -> return (Yield o (MachineT k)))
-  (\f k g -> return (Await (MachineT . f) k (MachineT g)))
+  (\f k g -> return (Await (MachineT #. f) k (MachineT g)))
   (return Stop)
 
 -- | Incorporate a 'Plan' into the resulting machine.
@@ -237,7 +238,7 @@ preplan :: Monad m => PlanT k o m (MachineT m k o) -> MachineT m k o
 preplan m = MachineT $ runPlanT m
   runMachineT
   (\o k -> return (Yield o (MachineT k)))
-  (\f k g -> return (Await (MachineT . f) k (MachineT g)))
+  (\f k g -> return (Await (MachineT #. f) k (MachineT g)))
   (return Stop)
 
 -- | Given a handle, ignore all other inputs and just stream input from that handle.
@@ -278,7 +279,7 @@ stopped = encased Stop
 --- result 'Plan'. This may be used when monadic binding of results is
 --- required.
 deconstruct :: Monad m => MachineT m k (Either a o) -> PlanT k o m a
-deconstruct m = PlanT $ \r y a f -> 
+deconstruct m = PlanT $ \r y a f ->
   let aux k = runPlanT (deconstruct k) r y a f
   in runMachineT m >>= \v -> case v of
        Stop -> f
