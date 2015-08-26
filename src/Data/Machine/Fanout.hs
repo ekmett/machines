@@ -8,6 +8,7 @@ import Control.Monad (foldM)
 import Data.Machine
 import Data.Maybe (catMaybes)
 import Data.Monoid
+import Data.Profunctor.Unsafe ((#.))
 import Data.Semigroup (Semigroup(sconcat))
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Prelude
@@ -43,15 +44,15 @@ flushYields = go id
 -- from the composite process.
 fanout :: (Functor m, Monad m, Semigroup r)
        => [ProcessT m a r] -> ProcessT m a r
-fanout xs = encased $ Await (MachineT . aux) Refl (fanout xs)
+fanout xs = encased $ Await (MachineT #. aux) Refl (fanout xs)
   where aux y = do (rs,xs') <- mapM (feed y) xs >>= mapAccumLM yields []
                    let nxt = fanout $ catMaybes xs'
                    case rs of
                      [] -> runMachineT nxt
                      (r:rs') -> return $ Yield (sconcat $ r :| rs') nxt
         yields rs Stop = return (rs,Nothing)
-        yields rs y@(Yield _ _) = first (++ rs) <$> flushYields y
-        yields rs a@(Await _ _ _) = return (rs, Just $ encased a)
+        yields rs y@Yield{} = first (++ rs) <$> flushYields y
+        yields rs a@Await{} = return (rs, Just $ encased a)
 
 -- | Share inputs with each of a list of processes in lockstep. If
 -- none of the processes yields a value, the composite process will
@@ -69,5 +70,5 @@ fanoutSteps xs = encased $ Await (MachineT . aux) Refl (fanoutSteps xs)
                    then return $ Yield mempty nxt
                    else return $ Yield (mconcat rs) nxt
         yields rs Stop = return (rs,Nothing)
-        yields rs y@(Yield _ _) = first (++rs) <$> flushYields y
-        yields rs a@(Await _ _ _) = return (rs, Just $ encased a)
+        yields rs y@Yield{} = first (++rs) <$> flushYields y
+        yields rs a@Await{} = return (rs, Just $ encased a)
