@@ -296,8 +296,8 @@ finalOr = construct . go where
 intersperse :: Category k => a -> Machine (k a) a
 intersperse sep = construct $ await >>= go where
   go cur = do
-    next <- await <|> yield cur *> stop
     yield cur
+    next <- await
     yield sep
     go next
 
