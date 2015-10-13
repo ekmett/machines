@@ -27,6 +27,7 @@ module Data.Machine.Type
   -- ** Building machines from plans
   , construct
   , repeatedly
+  , unfoldPlan
   , before
   , preplan
 --  , sink
