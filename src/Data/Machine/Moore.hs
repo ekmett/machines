@@ -115,10 +115,11 @@ instance ComonadApply (Moore a) where
 
 instance Distributive (Moore a) where
   distribute m = Moore (fmap extract m) (distribute . collect (\(Moore _ k) -> k) m)
-  {-# INLINE distribute #-}
 
 instance Representable (Moore a) where
   type Rep (Moore a) = [a]
   index (Moore b _) [] = b
   index (Moore _ k) (a:as) = index (k a) as
-  tabulate f = Moore (f []) $ \a -> tabulate (f.(a:))
+  tabulate f0 = go (f0 . reverse) where
+    go f = Moore (f []) $ \a -> go (f.(a:))
+  {-# INLINE tabulate #-}
