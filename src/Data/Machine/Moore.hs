@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE TypeFamilies #-}
 
 #ifndef MIN_VERSION_profunctors
 #define MIN_VERSION_profunctors(x,y,z) 0
@@ -25,6 +26,7 @@ import Control.Applicative
 import Control.Comonad
 import Data.Copointed
 import Data.Distributive
+import Data.Functor.Rep
 import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
@@ -114,3 +116,9 @@ instance ComonadApply (Moore a) where
 instance Distributive (Moore a) where
   distribute m = Moore (fmap extract m) (distribute . collect (\(Moore _ k) -> k) m)
   {-# INLINE distribute #-}
+
+instance Representable (Moore a) where
+  type Rep (Moore a) = [a]
+  index (Moore b _) [] = b
+  index (Moore _ k) (a:as) = index (k a) as
+  tabulate f = Moore (f []) $ \a -> tabulate (f.(a:))
