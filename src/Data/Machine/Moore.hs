@@ -112,5 +112,5 @@ instance ComonadApply (Moore a) where
   {-# INLINE (@>) #-}
 
 instance Distributive (Moore a) where
-  distribute m = Moore (fmap extract m) (distribute . distribute (fmap (\(Moore _ k) -> k) m))
+  distribute m = Moore (fmap extract m) (distribute . collect (\(Moore _ k) -> k) m)
   {-# INLINE distribute #-}
