@@ -24,6 +24,7 @@ module Data.Machine.Moore
 import Control.Applicative
 import Control.Comonad
 import Data.Copointed
+import Data.Distributive
 import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
@@ -109,3 +110,7 @@ instance ComonadApply (Moore a) where
   {-# INLINE (<@) #-}
   _ @> n = n
   {-# INLINE (@>) #-}
+
+instance Distributive (Moore a) where
+  distribute m = Moore (fmap extract m) (distribute . distribute (fmap (\(Moore _ k) -> k) m))
+  {-# INLINE distribute #-}
