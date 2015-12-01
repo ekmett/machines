@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE TypeFamilies #-}
 
 #ifndef MIN_VERSION_profunctors
 #define MIN_VERSION_profunctors(x,y,z) 0
@@ -24,6 +25,9 @@ module Data.Machine.Mealy
 import Control.Applicative
 import Control.Arrow
 import Control.Category
+import Data.Distributive
+import Data.Functor.Rep
+import Data.List.NonEmpty as NonEmpty
 import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
@@ -156,3 +160,19 @@ instance ArrowApply Mealy where
     go xs = Mealy $ \(m,x) -> case driveMealy m xs x of
       (c, _) -> (c, go (xs |> x))
   {-# INLINE app #-}
+
+instance Distributive (Mealy a) where
+  distribute fm = Mealy $ \a -> let fp = fmap (`runMealy` a) fm in
+     (fmap fst fp, collect snd fp)
+  collect k fa = Mealy $ \a -> let fp = fmap (\x -> runMealy (k x) a) fa in
+     (fmap fst fp, collect snd fp)
+
+instance Representable (Mealy a) where
+  type Rep (Mealy a) = NonEmpty a
+  index m (a :| as) = go m a as where
+    go (Mealy m) a as = case m a of
+      (b, m') -> case as of
+        [] -> b
+        a':as' -> go m' a' as'
+  tabulate f0 = Mealy $ \a -> go [a] f0 where
+     go as f = (f (NonEmpty.fromList (Prelude.reverse as)), Mealy $ \b -> go (b:as) f)
