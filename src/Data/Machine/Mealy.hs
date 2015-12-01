@@ -27,6 +27,7 @@ import Control.Applicative
 import Control.Arrow
 import Control.Category
 import Data.Distributive
+import Data.Functor.Extend
 import Data.Functor.Rep as Functor
 import Data.List.NonEmpty as NonEmpty
 import Data.Machine.Plan
@@ -64,6 +65,10 @@ instance Applicative (Mealy a) where
 instance Pointed (Mealy a) where
   point b = r where r = Mealy (const (b, r))
   {-# INLINE point #-}
+
+instance Extend (Mealy a) where
+  duplicated (Mealy m) = Mealy $ \a -> case m a of
+    (_, b) -> (b, duplicated b)
 
 -- | A 'Mealy' machine modeled with explicit state.
 unfoldMealy :: (s -> a -> (b, s)) -> s -> Mealy a b
