@@ -169,7 +169,7 @@ instance Distributive (Mealy a) where
 
 instance Representable (Mealy a) where
   type Rep (Mealy a) = NonEmpty a
-  index m (a :| as) = go m a as where
+  index m0 (a0 :| as0) = go m0 a0 as0 where
     go (Mealy m) a as = case m a of
       (b, m') -> case as of
         [] -> b

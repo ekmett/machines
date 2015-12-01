@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 #ifndef MIN_VERSION_profunctors
 #define MIN_VERSION_profunctors(x,y,z) 0
@@ -26,13 +27,15 @@ import Control.Applicative
 import Control.Comonad
 import Data.Copointed
 import Data.Distributive
-import Data.Functor.Rep
+import Data.Functor.Rep as Functor
 import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
 import Data.Monoid
 import Data.Pointed
 import Data.Profunctor
+import Data.Profunctor.Sieve
+import Data.Profunctor.Rep as Profunctor
 import Prelude
 
 -- | 'Moore' machines
@@ -116,10 +119,21 @@ instance ComonadApply (Moore a) where
 instance Distributive (Moore a) where
   distribute m = Moore (fmap extract m) (distribute . collect (\(Moore _ k) -> k) m)
 
-instance Representable (Moore a) where
+instance Functor.Representable (Moore a) where
   type Rep (Moore a) = [a]
-  index (Moore b _) [] = b
-  index (Moore _ k) (a:as) = index (k a) as
-  tabulate f0 = go (f0 . reverse) where
-    go f = Moore (f []) $ \a -> go (f.(a:))
+  index = cosieve
+  tabulate = cotabulate
   {-# INLINE tabulate #-}
+
+instance Cosieve Moore [] where
+  cosieve (Moore b _) [] = b
+  cosieve (Moore _ k) (a:as) = cosieve (k a) as
+
+instance Costrong Moore where
+  unfirst = unfirstCorep
+  unsecond = unsecondCorep
+
+instance Profunctor.Corepresentable Moore where
+  type Corep Moore = []
+  cotabulate f0 = go (f0 . reverse) where
+    go f = Moore (f []) $ \a -> go (f.(a:))
