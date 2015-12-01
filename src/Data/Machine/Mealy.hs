@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 #ifndef MIN_VERSION_profunctors
 #define MIN_VERSION_profunctors(x,y,z) 0
@@ -26,12 +27,14 @@ import Control.Applicative
 import Control.Arrow
 import Control.Category
 import Data.Distributive
-import Data.Functor.Rep
+import Data.Functor.Rep as Functor
 import Data.List.NonEmpty as NonEmpty
 import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
 import Data.Profunctor
+import Data.Profunctor.Sieve
+import Data.Profunctor.Rep as Profunctor
 import Data.Pointed
 import Data.Semigroup
 import Data.Sequence as Seq
@@ -167,12 +170,23 @@ instance Distributive (Mealy a) where
   collect k fa = Mealy $ \a -> let fp = fmap (\x -> runMealy (k x) a) fa in
      (fmap fst fp, collect snd fp)
 
-instance Representable (Mealy a) where
+instance Functor.Representable (Mealy a) where
   type Rep (Mealy a) = NonEmpty a
-  index m0 (a0 :| as0) = go m0 a0 as0 where
+  index = cosieve
+  tabulate = cotabulate
+
+instance Cosieve Mealy NonEmpty where
+  cosieve m0 (a0 :| as0) = go m0 a0 as0 where
     go (Mealy m) a as = case m a of
       (b, m') -> case as of
         [] -> b
         a':as' -> go m' a' as'
-  tabulate f0 = Mealy $ \a -> go [a] f0 where
+
+instance Costrong Mealy where
+  unfirst = unfirstCorep
+  unsecond = unsecondCorep
+
+instance Profunctor.Corepresentable Mealy where
+  type Corep Mealy = NonEmpty
+  cotabulate f0 = Mealy $ \a -> go [a] f0 where
      go as f = (f (NonEmpty.fromList (Prelude.reverse as)), Mealy $ \b -> go (b:as) f)
