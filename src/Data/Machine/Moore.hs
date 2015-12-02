@@ -25,6 +25,9 @@ module Data.Machine.Moore
 
 import Control.Applicative
 import Control.Comonad
+import Control.Monad.Fix
+import Control.Monad.Reader.Class
+import Control.Monad.Zip
 import Data.Copointed
 import Data.Distributive
 import Data.Functor.Rep as Functor
@@ -137,3 +140,14 @@ instance Profunctor.Corepresentable Moore where
   type Corep Moore = []
   cotabulate f0 = go (f0 . reverse) where
     go f = Moore (f []) $ \a -> go (f.(a:))
+
+instance MonadFix (Moore a) where
+  mfix = mfixRep
+
+instance MonadZip (Moore a) where
+  mzipWith = mzipWithRep
+  munzip m = (fmap fst m, fmap snd m)
+
+instance MonadReader [a] (Moore a) where
+  ask = askRep
+  local = localRep
