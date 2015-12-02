@@ -37,6 +37,7 @@ import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
 import Data.Profunctor
+import Data.Profunctor.Closed
 import Data.Profunctor.Sieve
 import Data.Profunctor.Rep as Profunctor
 import Data.Pointed
@@ -210,3 +211,5 @@ instance MonadReader (NonEmpty a) (Mealy a) where
   ask = askRep
   local = localRep
 
+instance Closed Mealy where
+  closed m = cotabulate $ \fs x -> cosieve m (fmap ($x) fs)

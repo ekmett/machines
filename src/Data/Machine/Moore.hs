@@ -37,6 +37,7 @@ import Data.Machine.Process
 import Data.Monoid
 import Data.Pointed
 import Data.Profunctor
+import Data.Profunctor.Closed
 import Data.Profunctor.Sieve
 import Data.Profunctor.Rep as Profunctor
 import Prelude
@@ -151,3 +152,6 @@ instance MonadZip (Moore a) where
 instance MonadReader [a] (Moore a) where
   ask = askRep
   local = localRep
+
+instance Closed Moore where
+  closed m = cotabulate $ \fs x -> cosieve m (fmap ($x) fs)
