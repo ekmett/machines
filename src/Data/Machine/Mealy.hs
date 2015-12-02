@@ -26,6 +26,9 @@ module Data.Machine.Mealy
 import Control.Applicative
 import Control.Arrow
 import Control.Category
+import Control.Monad.Fix
+import Control.Monad.Reader.Class
+import Control.Monad.Zip
 import Data.Distributive
 import Data.Functor.Extend
 import Data.Functor.Rep as Functor
@@ -195,3 +198,15 @@ instance Profunctor.Corepresentable Mealy where
   type Corep Mealy = NonEmpty
   cotabulate f0 = Mealy $ \a -> go [a] f0 where
      go as f = (f (NonEmpty.fromList (Prelude.reverse as)), Mealy $ \b -> go (b:as) f)
+
+instance MonadFix (Mealy a) where
+  mfix = mfixRep
+
+instance MonadZip (Mealy a) where
+  mzipWith = mzipWithRep
+  munzip m = (fmap fst m, fmap snd m)
+
+instance MonadReader (NonEmpty a) (Mealy a) where
+  ask = askRep
+  local = localRep
+
