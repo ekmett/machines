@@ -230,12 +230,18 @@ scanMap f = scan (\b a -> mappend b (f a)) mempty
 -- 'fold' :: (a -> b -> a) -> a -> Process b a
 -- @
 fold :: Category k => (a -> b -> a) -> a -> Machine (k b) a
-fold func seed = scan func seed ~> final
+fold func seed = construct $ go seed where
+  go cur = do
+    next <- await <|> yield cur *> stop
+    go $! func cur next
 
 -- |
 -- 'fold1' is a variant of 'fold' that has no starting value argument
 fold1 :: Category k => (a -> a -> a) -> Machine (k a) a
-fold1 func = scan1 func ~> final
+fold1 func = construct $ await >>= go where
+  go cur = do
+    next <- await <|> yield cur *> stop
+    go $! func cur next
 
 -- | Break each input into pieces that are fed downstream
 -- individually.
