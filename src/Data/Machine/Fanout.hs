@@ -1,58 +1,38 @@
 {-# LANGUAGE GADTs #-}
+
 -- | Provide a notion of fanout wherein a single input is passed to
 -- several consumers.
 module Data.Machine.Fanout (fanout, fanoutSteps) where
-import Control.Applicative
-import Control.Arrow
-import Control.Monad (foldM)
-import Data.Machine
-import Data.Maybe (catMaybes)
-import Data.Monoid
-import Data.Profunctor.Unsafe ((#.))
-import Data.Semigroup (Semigroup(sconcat))
-import Data.List.NonEmpty (NonEmpty((:|)))
-import Prelude
 
--- | Feed a value to a 'ProcessT' at an 'Await' 'Step'. If the
--- 'ProcessT' is awaiting a value, then its next step is
--- returned. Otherwise, the original process is returned.
-feed :: Monad m => a -> ProcessT m a b -> m (Step (Is a) b (ProcessT m a b))
-feed x m = runMachineT m >>= \v ->
-            case v of
-              Await f Refl _ -> runMachineT (f x)
-              s -> return s
+import           Data.List.NonEmpty (NonEmpty (..))
+import           Data.Machine
+import           Data.Monoid        (Monoid (..))
+import           Data.Semigroup     (Semigroup (sconcat))
+import           Data.Traversable   (traverse)
 
--- | Like 'Data.List.mapAccumL' but with a monadic accumulating
--- function.
-mapAccumLM :: (Functor m, Monad m)
-           => (acc -> x -> m (acc, y)) -> acc -> [x] -> m (acc, [y])
-mapAccumLM f z = fmap (second ($ [])) . foldM aux (z,id)
-  where aux (acc,ys) x = second ((. ys) . (:)) <$> f acc x
+continue :: ([b] -> r) -> [(a -> b, b)] -> Step (Is a) o r
+continue _ [] = Stop
+continue f ws = Await (f . traverse fst ws) Refl (f $ map snd ws)
 
--- | Exhaust a sequence of all successive 'Yield' steps taken by a
--- 'MachineT'. Returns the list of yielded values and the next
--- (non-Yield) step of the machine.
-flushYields :: Monad m
-            => Step k o (MachineT m k o) -> m ([o], Maybe (MachineT m k o))
-flushYields = go id
-  where go rs (Yield o s) = runMachineT s >>= go ((o:) . rs)
-        go rs Stop = return (rs [], Nothing)
-        go rs s = return (rs [], Just $ encased s)
+semigroupDlist :: Semigroup a => ([a] -> [a]) -> Maybe a
+semigroupDlist f = case f [] of
+  [] -> Nothing
+  x:xs -> Just $ sconcat (x:|xs)
 
 -- | Share inputs with each of a list of processes in lockstep. Any
 -- values yielded by the processes are combined into a single yield
 -- from the composite process.
 fanout :: (Functor m, Monad m, Semigroup r)
        => [ProcessT m a r] -> ProcessT m a r
-fanout xs = encased $ Await (MachineT #. aux) Refl (fanout xs)
-  where aux y = do (rs,xs') <- mapM (feed y) xs >>= mapAccumLM yields []
-                   let nxt = fanout $ catMaybes xs'
-                   case rs of
-                     [] -> runMachineT nxt
-                     (r:rs') -> return $ Yield (sconcat $ r :| rs') nxt
-        yields rs Stop = return (rs,Nothing)
-        yields rs y@Yield{} = first (++ rs) <$> flushYields y
-        yields rs a@Await{} = return (rs, Just $ encased a)
+fanout = MachineT . go id id
+  where
+    go waiting acc [] = case waiting [] of
+      ws -> return . maybe k (\x -> Yield x $ encased k) $ semigroupDlist acc
+        where k = continue fanout ws
+    go waiting acc (m:ms) = runMachineT m >>= \v -> case v of
+      Stop           -> go waiting acc ms
+      Yield x k      -> go waiting (acc . (x:)) (k:ms)
+      Await f Refl k -> go (waiting . ((f, k):)) acc ms
 
 -- | Share inputs with each of a list of processes in lockstep. If
 -- none of the processes yields a value, the composite process will
@@ -63,12 +43,11 @@ fanout xs = encased $ Await (MachineT #. aux) Refl (fanout xs)
 -- followed by a 'taking' process.
 fanoutSteps :: (Functor m, Monad m, Monoid r)
             => [ProcessT m a r] -> ProcessT m a r
-fanoutSteps xs = encased $ Await (MachineT . aux) Refl (fanoutSteps xs)
-  where aux y = do (rs,xs') <- mapM (feed y) xs >>= mapAccumLM yields []
-                   let nxt = fanoutSteps $ catMaybes xs'
-                   if null rs
-                   then return $ Yield mempty nxt
-                   else return $ Yield (mconcat rs) nxt
-        yields rs Stop = return (rs,Nothing)
-        yields rs y@Yield{} = first (++rs) <$> flushYields y
-        yields rs a@Await{} = return (rs, Just $ encased a)
+fanoutSteps = MachineT . go id id
+  where
+    go waiting acc [] = case (waiting [], mconcat (acc [])) of
+      (ws, xs) -> return . Yield xs $ encased (continue fanoutSteps ws)
+    go waiting acc (m:ms) = runMachineT m >>= \v -> case v of
+      Stop           -> go waiting acc ms
+      Yield x k      -> go waiting (acc . (x:)) (k:ms)
+      Await f Refl k -> go (waiting . ((f, k):)) acc ms
