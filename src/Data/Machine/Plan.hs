@@ -99,6 +99,10 @@ instance Applicative (PlanT k o m) where
   {-# INLINE pure #-}
   m <*> n = PlanT $ \kp ke kr kf -> runPlanT m (\f -> runPlanT n (\a -> kp (f a)) ke kr kf) ke kr kf
   {-# INLINE (<*>) #-}
+  m *> n = PlanT $ \kp ke kr kf -> runPlanT m (\_ -> runPlanT n kp ke kr kf) ke kr kf
+  {-# INLINE (*>) #-}
+  m <* n = PlanT $ \kp ke kr kf -> runPlanT m (\a -> runPlanT n (\_ -> kp a) ke kr kf) ke kr kf
+  {-# INLINE (<*) #-}
 
 instance Alternative (PlanT k o m) where
   empty = PlanT $ \_ _ _ kf -> kf
@@ -110,6 +114,8 @@ instance Monad (PlanT k o m) where
   return = pure
   {-# INLINE return #-}
   PlanT m >>= f = PlanT (\kp ke kr kf -> m (\a -> runPlanT (f a) kp ke kr kf) ke kr kf)
+  (>>) = (*>)
+  {-# INLINE (>>) #-}
   fail _ = PlanT (\_ _ _ kf -> kf)
   {-# INLINE (>>=) #-}
 
