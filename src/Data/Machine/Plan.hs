@@ -33,7 +33,7 @@ module Data.Machine.Plan
 
 import Control.Applicative
 import Control.Category
-import Control.Monad (ap, MonadPlus(..))
+import Control.Monad (MonadPlus(..))
 import Control.Monad.Trans.Class
 import Control.Monad.IO.Class
 import Control.Monad.State.Class
@@ -97,7 +97,7 @@ instance Functor (PlanT k o m) where
 instance Applicative (PlanT k o m) where
   pure a = PlanT (\kp _ _ _ -> kp a)
   {-# INLINE pure #-}
-  (<*>) = ap
+  m <*> n = PlanT $ \kp ke kr kf -> runPlanT m (\f -> runPlanT n (\a -> kp (f a)) ke kr kf) ke kr kf
   {-# INLINE (<*>) #-}
 
 instance Alternative (PlanT k o m) where
@@ -107,7 +107,7 @@ instance Alternative (PlanT k o m) where
   {-# INLINE (<|>) #-}
 
 instance Monad (PlanT k o m) where
-  return a = PlanT (\kp _ _ _ -> kp a)
+  return = pure
   {-# INLINE return #-}
   PlanT m >>= f = PlanT (\kp ke kr kf -> m (\a -> runPlanT (f a) kp ke kr kf) ke kr kf)
   fail _ = PlanT (\_ _ _ kf -> kf)
