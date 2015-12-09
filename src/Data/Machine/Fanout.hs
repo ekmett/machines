@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
 
 -- | Provide a notion of fanout wherein a single input is passed to
@@ -6,9 +7,11 @@ module Data.Machine.Fanout (fanout, fanoutSteps) where
 
 import           Data.List.NonEmpty (NonEmpty (..))
 import           Data.Machine
-import           Data.Monoid        (Monoid (..))
 import           Data.Semigroup     (Semigroup (sconcat))
+#if __GLASGOW_HASKELL__  < 710
+import           Data.Monoid        (Monoid (..))
 import           Data.Traversable   (traverse)
+#endif
 
 continue :: ([b] -> r) -> [(a -> b, b)] -> Step (Is a) o r
 continue _ [] = Stop
