@@ -27,6 +27,7 @@ module Data.Machine.Type
   -- ** Building machines from plans
   , construct
   , repeatedly
+  , unfoldPlan
   , before
   , preplan
 --  , sink
@@ -224,6 +225,15 @@ repeatedly m = r where
     (\o k -> return (Yield o (MachineT k)))
     (\f k g -> return (Await (MachineT #. f) k (MachineT g)))
     (return Stop)
+
+-- | Unfold a stateful PlanT into a MachineT.
+unfoldPlan :: Monad m => s -> (s -> PlanT k o m s) -> MachineT m k o
+unfoldPlan s0 sp = r s0 where
+  r s = MachineT $ runPlanT (sp s)
+      (\sx -> runMachineT $ r sx)
+      (\o k -> return (Yield o (MachineT k)))
+      (\f k g -> return (Await (MachineT #. f) k (MachineT g)))
+      (return Stop)
 
 -- | Evaluate a machine until it stops, and then yield answers according to the supplied model.
 before :: Monad m => MachineT m k o -> PlanT k o m a -> MachineT m k o
