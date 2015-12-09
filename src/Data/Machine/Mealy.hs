@@ -36,8 +36,8 @@ import Data.List.NonEmpty as NonEmpty
 import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
-import Data.Profunctor
 import Data.Profunctor.Closed
+import Data.Profunctor
 import Data.Profunctor.Sieve
 import Data.Profunctor.Rep as Profunctor
 import Data.Pointed

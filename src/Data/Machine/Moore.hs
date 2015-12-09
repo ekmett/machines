@@ -36,8 +36,8 @@ import Data.Machine.Type
 import Data.Machine.Process
 import Data.Monoid
 import Data.Pointed
-import Data.Profunctor
 import Data.Profunctor.Closed
+import Data.Profunctor
 import Data.Profunctor.Sieve
 import Data.Profunctor.Rep as Profunctor
 import Prelude
