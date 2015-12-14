@@ -15,10 +15,11 @@ module Data.Machine.Tee
   ( -- * Tees
     Tee, TeeT
   , T(..)
-  , tee
+  , tee, teeT
   , addL, addR
   , capL, capR
   , zipWithT
+  , zipWith
   ) where
 
 import Data.Machine.Is
@@ -26,7 +27,7 @@ import Data.Machine.Plan
 import Data.Machine.Process
 import Data.Machine.Type
 import Data.Machine.Source
-import Prelude hiding ((.),id)
+import Prelude hiding ((.),id, zipWith)
 
 -------------------------------------------------------------------------------
 -- Tees
@@ -59,6 +60,23 @@ tee ma mb m = MachineT $ runMachineT m >>= \v -> case v of
     Await g Refl fg ->
       return $ Await (\b -> tee ma (g b) $ encased v) R $ tee ma fg $ encased v
 
+-- | `teeT mt ma mb` Use a `Tee` to interleave or combine the outputs of `ma`
+--   and `mb`
+teeT :: Monad m => TeeT m a b c -> MachineT m k a -> MachineT m k b -> MachineT m k c
+teeT mt ma mb = MachineT $ runMachineT mt >>= \v -> case v of
+  Stop         -> return Stop
+  Yield o k    -> return $ Yield o $ teeT k ma mb
+  Await f L ff -> runMachineT ma >>= \u -> case u of
+    Stop          -> runMachineT $ teeT ff stopped mb
+    Yield a k     -> runMachineT $ teeT (f a) k mb
+    Await g rq fg ->
+      return $ Await (\r -> teeT mt (g r) mb) rq $ teeT mt fg mb
+  Await f R ff -> runMachineT mb >>= \u -> case u of
+    Stop          -> runMachineT $ teeT ff ma stopped
+    Yield a k     -> runMachineT $ teeT (f a) ma k
+    Await g rq fg ->
+      return $ Await (\r -> teeT mt ma (g r)) rq $ teeT mt ma fg
+
 -- | Precompose a pipe onto the left input of a tee.
 addL :: Monad m => ProcessT m a b -> TeeT m b c d -> TeeT m a c d
 addL p = tee p echo
@@ -89,3 +107,13 @@ cappedT L = Refl
 zipWithT :: Monad m => (a -> b -> c) -> PlanT (T a b) c m ()
 zipWithT f = do { a <- awaits L; b <- awaits R; yield $ f a b }
 {-# INLINE zipWithT #-}
+
+-- | Zip together two inputs, then apply the given function,
+--   halting as soon as either input is exhausted.
+--   This implementation reads from the left, then the right
+zipWith :: (a -> b -> c) -> Tee a b c
+zipWith f = repeatedly $ do
+  a <- awaits L
+  b <- awaits R
+  yield (f a b)
+{-# INLINE zipWith #-}
