@@ -1,3 +1,13 @@
+0.6
+---
+* Added better fanout combinators. `Data.Machine.Fanout`
+* Added a module for lifting machines that run in transformed monads. `Data.Machine.Lift`
+* Added instances for `Mealy` and `Moore`.
+* Explicitly implemented `(<*>)` `(*>)` and `(<*)` for `PlanT`.
+* Added `Data.Machine.Runner` with various tools for running machines.
+* Added `teeT`.
+* Added `unfoldPlan` and `preplan`
+
 0.5.1
 -----
 * `profunctors` 5 support

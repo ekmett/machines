@@ -1,6 +1,6 @@
 name:          machines
 category:      Control, Enumerator
-version:       0.5.1
+version:       0.6
 license:       BSD3
 cabal-version: >= 1.10
 license-file:  LICENSE
@@ -9,7 +9,7 @@ maintainer:    Edward A. Kmett <ekmett@gmail.com>
 stability:     provisional
 homepage:      http://github.com/ekmett/machines/
 bug-reports:   http://github.com/ekmett/machines/issues
-copyright:     Copyright (C) 2012 Edward A. Kmett
+copyright:     Copyright (C) 2012-2015 Edward A. Kmett
 synopsis:      Networked stream transducers
 description:
   Networked stream transducers
