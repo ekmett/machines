@@ -289,7 +289,7 @@ sinkPart_ :: Monad m => (a -> (b,c)) -> ProcessT m c Void -> ProcessT m a b
 sinkPart_ p = go
   where go m = MachineT $ runMachineT m >>= \v -> case v of
           Stop -> return Stop
-          Yield _ k -> runMachineT $ go k
+          Yield o _ -> absurd o
           Await f Refl ff -> return $
             Await (\x -> let (keep,sink) = p x
                          in encased . Yield keep $ go (f sink))
