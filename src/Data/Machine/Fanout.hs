@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | Provide a notion of fanout wherein a single input is passed to
 -- several consumers.
@@ -25,10 +26,15 @@ semigroupDlist f = case f [] of
 -- | Share inputs with each of a list of processes in lockstep. Any
 -- values yielded by the processes are combined into a single yield
 -- from the composite process.
-fanout :: (Functor m, Monad m, Semigroup r)
+fanout :: forall m a r. (Monad m, Semigroup r)
        => [ProcessT m a r] -> ProcessT m a r
 fanout = MachineT . go id id
   where
+    go :: ([(a -> ProcessT m a r, ProcessT m a r)]
+       -> [(a -> ProcessT m a r, ProcessT m a r)])
+       -> ([r] -> [r])
+       -> [ProcessT m a r]
+       -> m (Step (Is a) r (ProcessT m a r))
     go waiting acc [] = case waiting [] of
       ws -> return . maybe k (\x -> Yield x $ encased k) $ semigroupDlist acc
         where k = continue fanout ws
@@ -44,10 +50,15 @@ fanout = MachineT . go id id
 -- run a collection of 'ProcessT's that await but don't yield some
 -- number of times, you can use 'fanOutSteps . map (fmap (const ()))'
 -- followed by a 'taking' process.
-fanoutSteps :: (Functor m, Monad m, Monoid r)
+fanoutSteps :: forall m a r. (Monad m, Monoid r)
             => [ProcessT m a r] -> ProcessT m a r
 fanoutSteps = MachineT . go id id
   where
+    go :: ([(a -> ProcessT m a r, ProcessT m a r)]
+       -> [(a -> ProcessT m a r, ProcessT m a r)])
+       -> ([r] -> [r])
+       -> [ProcessT m a r]
+       -> m (Step (Is a) r (ProcessT m a r))
     go waiting acc [] = case (waiting [], mconcat (acc [])) of
       (ws, xs) -> return . Yield xs $ encased (continue fanoutSteps ws)
     go waiting acc (m:ms) = runMachineT m >>= \v -> case v of
