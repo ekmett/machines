@@ -104,7 +104,7 @@ cappedT L = Refl
 {-# INLINE cappedT #-}
 
 -- | wait for both the left and the right sides of a T and then merge them with f.
-zipWithT :: Monad m => (a -> b -> c) -> PlanT (T a b) c m ()
+zipWithT :: (a -> b -> c) -> PlanT (T a b) c m ()
 zipWithT f = do { a <- awaits L; b <- awaits R; yield $ f a b }
 {-# INLINE zipWithT #-}
 
