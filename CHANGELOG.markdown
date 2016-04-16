@@ -1,6 +1,7 @@
 0.6.1
 -----
 * Bumped upper version bounds for `comonad`, `conduit-combinators`, `criterion`, `distributive`, `pointed`, and `transformers`
+* Fix compilation with `stack`
 
 0.6
 ---
