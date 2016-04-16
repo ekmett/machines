@@ -1,3 +1,7 @@
+0.6.1
+-----
+* Bumped upper version bounds for `comonad`, `conduit-combinators`, `criterion`, `distributive`, `pointed`, and `transformers`
+
 0.6
 ---
 * Added better fanout combinators. `Data.Machine.Fanout`
