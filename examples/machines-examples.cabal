@@ -23,8 +23,8 @@ source-repository head
 library
   build-depends:
     base         == 4.*,
-    machines     == 0.4,
-    mtl          >= 2 && < 2.2
+    machines     == 0.6,
+    mtl          >= 2 && < 2.3
 
   exposed-modules:
     Examples
