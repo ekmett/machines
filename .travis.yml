@@ -38,6 +38,12 @@ matrix:
 before_install:
  - unset CC
  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
+ - if [ $GHCVER = "7.4.2" ]; # Workaround for criterion not compiling on 7.4
+   then
+     export CABAL_FLAGS="--enable-benchmarks"
+   else
+     export CABAL_FLAGS="--enable-benchmarks --enable-tests"
+   fi
 
 install:
  - cabal --version
@@ -49,7 +55,7 @@ install:
    fi
  - travis_retry cabal update -v
  - sed -i 's/^jobs:/-- jobs:/' ${HOME}/.cabal/config
- - cabal install --only-dependencies --enable-tests --enable-benchmarks --dry -v > installplan.txt
+ - cabal install --only-dependencies $CABAL_FLAGS --dry -v > installplan.txt
  - sed -i -e '1,/^Resolving /d' installplan.txt; cat installplan.txt
 
 # check whether current requested install-plan matches cached package-db snapshot
@@ -63,7 +69,7 @@ install:
      echo "cabal build-cache MISS";
      rm -rf $HOME/.cabsnap;
      mkdir -p $HOME/.ghc $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin;
-     cabal install -j --only-dependencies --enable-tests --enable-benchmarks;
+     cabal install -j --only-dependencies $CABAL_FLAGS;
    fi
 
 # snapshot package-db on cache miss
@@ -80,13 +86,16 @@ install:
 # build to fail.
 script:
  # -v2 provides useful information for debugging
- - cabal configure --enable-tests --enable-benchmarks -v2
+ - cabal configure $CABAL_FLAGS -v2
 
  # this builds all libraries and executables
  # (including tests/benchmarks)
  - cabal build
 
- - cabal test
+ - if [ $GHCVER = "7.4.2" ]; # Workaround for criterion not compiling on 7.4
+   then
+     cabal test
+   fi
 
  - cabal bench
 
