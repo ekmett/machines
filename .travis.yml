@@ -38,7 +38,8 @@ matrix:
 before_install:
  - unset CC
  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
- - if [ $GHCVER = "7.4.2" ]; # Workaround for criterion not compiling on 7.4
+ # Workaround for criterion not compiling on 7.4
+ - if [ $GHCVER = "7.4.2" ];
    then
      export CABAL_FLAGS="--enable-benchmarks";
    else
@@ -92,7 +93,8 @@ script:
  # (including tests/benchmarks)
  - cabal build
 
- - if [ $GHCVER = "7.4.2" ]; # Workaround for criterion not compiling on 7.4
+ # Workaround for criterion not compiling on 7.4
+ - if [ $GHCVER = "7.4.2" ];
    then
      cabal test;
    fi
