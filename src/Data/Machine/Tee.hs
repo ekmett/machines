@@ -117,3 +117,8 @@ zipWith f = repeatedly $ do
   b <- awaits R
   yield (f a b)
 {-# INLINE zipWith #-}
+
+-- | Zip together two inputs, halting as soon as either input is exhausted.
+zipping :: Tee a b (a, b)
+zipping = zipWith (,)
+{-# INLINE zipping #-}
