@@ -22,14 +22,17 @@ module Data.Machine.Source
   , iterated
   , replicated
   , enumerateFromTo
+  , unfold
+  , unfoldT
   ) where
 
 import Control.Category
+import Control.Monad.Trans
 import Data.Foldable
 import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
-import Prelude (Enum, Eq, Int, otherwise, succ, (==), (>>))
+import Prelude (Enum, Eq, Int, Maybe, Monad, otherwise, succ, (==), (>>), ($))
 
 -------------------------------------------------------------------------------
 -- Source
@@ -82,3 +85,23 @@ enumerateFromTo start end = construct (go start) where
   go i
     | i == end  = yield i
     | otherwise = yield i >> go (succ i)
+
+-- | 'unfold' @k seed@ The function takes the element and returns Nothing if it
+--   is done producing values or returns Just (a,r), in which case, @a@ is
+--   'yield'ed and @r@ is used as the next element in a recursive call.
+unfold :: (r -> Maybe (a, r)) -> r -> Source a
+unfold k seed = construct (go seed)
+  where
+    go r = for_ (k r) $ \(a, r') -> do
+      yield a
+      go r'
+
+-- | Effectful 'unfold' variant.
+unfoldT :: Monad m => (r -> m (Maybe (a, r))) -> r -> SourceT m a
+unfoldT k seed = construct (go seed)
+  where
+    go r = do
+      opt <- lift $ k r
+      for_ opt $ \(a, r') -> do
+        yield a
+        go r'
