@@ -52,7 +52,7 @@ module Data.Machine.Process
   , mapping
   , reading
   , showing
-  , stripingPrefix
+  , strippingPrefix
   ) where
 
 import Control.Applicative
@@ -347,23 +347,24 @@ showing :: (Category k, Show a) => Machine (k a) String
 showing = mapping show
 
 -- |
--- 'stripingPrefix' @mp mb@ Drops the given prefix from @mp@. It stops if @mb@ did
--- not start with the prefix given, or continues streaming after the prefix, if
--- @mb@ did.
-stripingPrefix :: (Eq b, Monad m)
-               => MachineT m (k a) b
-               -> MachineT m (k a) b
-               -> MachineT m (k a) b
-stripingPrefix mp mb = MachineT $ runMachineT mp >>= \v -> case v of
+-- 'strippingPrefix' @mp mb@ Drops the given prefix from @mp@. It stops if @mb@
+-- did not start with the prefix given, or continues streaming after the
+-- prefix, if @mb@ did.
+strippingPrefix :: (Eq b, Monad m)
+                => MachineT m (k a) b
+                -> MachineT m (k a) b
+                -> MachineT m (k a) b
+strippingPrefix mp mb = MachineT $ runMachineT mp >>= \v -> case v of
   Stop          -> runMachineT mb
   Yield b k     -> verify b k mb
   Await f ki ff ->
-    return $ Await (\a -> stripingPrefix (f a) mb) ki (stripingPrefix ff mb)
+    return $ Await (\a -> strippingPrefix (f a) mb) ki (strippingPrefix ff mb)
   where
     verify b nxt cur = runMachineT cur >>= \u -> case u of
       Stop -> return Stop
       Yield b' nxt'
-        | b == b'   -> runMachineT $ stripingPrefix nxt nxt'
+        | b == b'   -> runMachineT $ strippingPrefix nxt nxt'
         | otherwise -> return Stop
       Await f ki ff ->
-        return $ Await (\a -> MachineT $ verify b nxt (f a)) ki (MachineT $ verify b nxt ff)
+        return $ Await (\a -> MachineT $ verify b nxt (f a))
+                   ki (MachineT $ verify b nxt ff)
