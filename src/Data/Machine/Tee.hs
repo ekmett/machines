@@ -20,6 +20,7 @@ module Data.Machine.Tee
   , capL, capR
   , zipWithT
   , zipWith
+  , zipping
   ) where
 
 import Data.Machine.Is
