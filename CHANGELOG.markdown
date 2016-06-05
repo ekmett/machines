@@ -2,6 +2,7 @@
 -----
 * Bumped upper version bounds for `comonad`, `conduit-combinators`, `criterion`, `distributive`, `pointed`, and `transformers`
 * Fix compilation with `stack`
+* Added `strippingPrefix`, `unfold`, `unfoldT`, `zipping`
 
 0.6
 ---
