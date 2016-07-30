@@ -106,4 +106,4 @@ benchmark benchmarks
     criterion           >= 0.6   && < 1.2,
     machines,
     mtl                 >= 2     && < 2.3,
-    pipes               >= 4     && < 4.2
+    pipes               >= 4     && < 4.3
