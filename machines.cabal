@@ -93,6 +93,20 @@ test-suite doctests
   ghc-options: -Wall -threaded
   hs-source-dirs: tests
 
+test-suite properties
+  type: exitcode-stdio-1.0
+  main-is: properties.hs
+  ghc-options: -Wall -threaded
+  hs-source-dirs:
+    tests
+  build-depends:
+    base,
+    machines,
+    transformers,
+    QuickCheck                 >= 2.4,
+    test-framework-quickcheck2 >= 0.2,
+    test-framework-th          >= 0.2
+
 benchmark benchmarks
   default-language: Haskell2010
   type:             exitcode-stdio-1.0
