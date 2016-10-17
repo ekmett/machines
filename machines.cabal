@@ -60,6 +60,7 @@ library
     Data.Machine.Process
     Data.Machine.Plan
     Data.Machine.Runner
+    Data.Machine.Seeking
     Data.Machine.Source
     Data.Machine.Stack
     Data.Machine.Tee
