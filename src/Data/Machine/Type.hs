@@ -261,10 +261,13 @@ preplan m = MachineT $ runPlanT m
 -- 'pass' 'Data.Machine.Wye.Y'  :: 'Data.Machine.Wye.Wye' a b b
 -- 'pass' 'Data.Machine.Wye.Z'  :: 'Data.Machine.Wye.Wye' a b (Either a b)
 -- @
+--
 pass :: k o -> Machine k o
-pass k = repeatedly $ do
-  a <- awaits k
-  yield a
+pass k =
+    loop
+  where
+    loop = encased (Await (\t -> encased (Yield t loop)) k stopped)
+
 
 
 -- | Run a machine with no input until it stops, then behave as another machine.

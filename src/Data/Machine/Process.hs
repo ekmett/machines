@@ -134,6 +134,7 @@ echo =
     loop
   where
     loop = encased (Await (\t -> encased (Yield t loop)) Refl stopped)
+{-# INLINABLE echo #-}
 
 -- | A 'Process' that prepends the elements of a 'Foldable' onto its input, then repeats its input from there.
 prepended :: Foldable f => f a -> Process a a
@@ -165,6 +166,7 @@ filtered p =
             False -> loop)
            Refl
            stopped
+{-# INLINABLE filtered #-}
 
 -- | A 'Process' that drops the first @n@, then repeats the rest.
 --
@@ -188,6 +190,7 @@ dropping cnt0 =
       = echo
       | otherwise
       = encased (Await (\_ -> loop (cnt - 1)) Refl stopped)
+{-# INLINABLE dropping #-}
 
 -- | A 'Process' that passes through the first @n@ elements from its input then stops
 --
@@ -211,6 +214,7 @@ taking cnt0 =
       = stopped
       | otherwise
       = encased (Await (\v -> encased $ Yield v (loop (cnt - 1))) Refl stopped)
+{-# INLINABLE taking #-}
 
 -- | A 'Process' that passes through elements until a predicate ceases to hold, then stops
 --
@@ -236,6 +240,7 @@ takingWhile p =
             False -> stopped)
            Refl
            stopped
+{-# INLINABLE takingWhile #-}
 
 -- | A 'Process' that drops elements while a predicate holds
 --
@@ -262,6 +267,7 @@ droppingWhile p =
             False -> encased (Yield a echo))
            Refl
            stopped
+{-# INLINABLE droppingWhile #-}
 
 -- | Chunk up the input into `n` element lists.
 --
@@ -317,6 +323,7 @@ buffered n =
     -- All data has been retrieved, emit and stop.
     finish dl = encased
               $ Yield (dl []) stopped
+{-# INLINABLE buffered #-}
 
 -- | Build a new 'Machine' by adding a 'Process' to the output of an old 'Machine'
 --
@@ -333,10 +340,12 @@ mp <~ ma = MachineT $ runMachineT mp >>= \v -> case v of
     Stop          -> runMachineT $ ff <~ stopped
     Yield o k     -> runMachineT $ f o <~ k
     Await g kg fg -> return $ Await (\a -> encased v <~ g a) kg (encased v <~ fg)
+{-# INLINABLE (<~) #-}
 
 -- | Flipped ('<~').
 (~>) :: Monad m => MachineT m k b -> ProcessT m b c -> MachineT m k c
 ma ~> mp = mp <~ ma
+{-# INLINABLE (~>) #-}
 
 -- | Feed a 'Process' some input.
 supply :: forall f m a b . (Foldable f, Monad m) => f a -> ProcessT m a b -> ProcessT m a b
@@ -352,6 +361,7 @@ supply xs = foldr go id xs
            Stop -> return Stop
            Await f Refl _ -> runMachineT $ r (f x)
            Yield o k -> return $ Yield o (go x r k)
+{-# INLINABLE supply #-}
 
 -- |
 -- Convert a machine into a process, with a little bit of help.
@@ -408,6 +418,7 @@ scan func seed =
                      id
                      stopped
   in  step seed
+{-# INLINABLE scan #-}
 
 -- |
 -- 'scan1' is a variant of 'scan' that has no starting value argument
@@ -437,12 +448,14 @@ scan1 func =
                      id
                      stopped
   in  encased $ Await step id stopped
+{-# INLINABLE scan1 #-}
 
 -- |
 -- Like 'scan' only uses supplied function to map and uses Monoid for
 -- associative operation
 scanMap :: (Category k, Monoid b) => (a -> b) -> Machine (k a) b
 scanMap f = scan (\b a -> mappend b (f a)) mempty
+{-# INLINABLE scanMap #-}
 
 -- |
 -- Construct a 'Process' from a left-folding operation.
@@ -476,6 +489,7 @@ fold func =
                      id
                      (encased $ Yield t stopped)
   in  step
+{-# INLINABLE fold #-}
 
 -- |
 -- 'fold1' is a variant of 'fold' that has no starting value argument
@@ -502,6 +516,7 @@ fold1 func =
                      id
                      (encased $ Yield t stopped)
   in  encased $ Await step id stopped
+{-# INLINABLE fold1 #-}
 
 
 -- | Break each input into pieces that are fed downstream
@@ -558,6 +573,7 @@ autoM f =
     loop
   where
     loop = encased (Await (\t -> MachineT (flip Yield loop `liftM` f t)) id stopped)
+{-# INLINABLE autoM #-}
 
 -- |
 -- Skip all but the final element of the input
@@ -585,6 +601,7 @@ final =
   let step x = encased (Await step id (emit x))
       emit x = encased (Yield x stopped)
   in encased $ Await step id stopped
+{-# INLINABLE final #-}
 
 -- |
 -- Skip all but the final element of the input.
@@ -613,6 +630,7 @@ finalOr o =
   let step x = encased (Await step id (emit x))
       emit x = encased (Yield x stopped)
   in encased $ Await step id (emit o)
+{-# INLINABLE finalOr #-}
 
 -- |
 -- Intersperse an element between the elements of the input
@@ -632,11 +650,13 @@ intersperse sep = construct $ await >>= go where
 -- Return the maximum value from the input
 largest :: (Category k, Ord a) => Machine (k a) a
 largest = fold1 max
+{-# INLINABLE largest #-}
 
 -- |
 -- Return the minimum value from the input
 smallest :: (Category k, Ord a) => Machine (k a) a
 smallest = fold1 min
+{-# INLINABLE smallest #-}
 
 -- |
 -- Convert a stream of actions to a stream of values
@@ -662,6 +682,7 @@ smallest = fold1 min
 --
 sequencing :: (Category k, Monad m) => MachineT m (k (m a)) a
 sequencing = autoM id
+{-# INLINABLE sequencing #-}
 
 -- |
 -- Apply a function to all values coming from the input
@@ -683,6 +704,7 @@ mapping f =
     loop
   where
     loop = encased (Await (\t -> encased (Yield (f t) loop)) id stopped)
+{-# INLINABLE mapping #-}
 
 -- |
 -- Apply an effectful to all values coming from the input.
@@ -705,6 +727,7 @@ reading = repeatedly $ do
 -- Convert 'Show'able values to 'String's
 showing :: (Category k, Show a) => Machine (k a) String
 showing = mapping show
+{-# INLINABLE showing #-}
 
 -- |
 -- 'strippingPrefix' @mp mb@ Drops the given prefix from @mp@. It stops if @mb@

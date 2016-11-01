@@ -33,7 +33,7 @@ main :: IO ()
 main =
   defaultMain
   [ bgroup "map"
-      [ bench "machines" $ whnf drainM (M.auto (+1))
+      [ bench "machines" $ whnf drainM (M.mapping (+1))
       , bench "pipes" $ whnf drainP (P.map (+1))
       , bench "conduit" $ whnf drainC (C.map (+1))
       ]
