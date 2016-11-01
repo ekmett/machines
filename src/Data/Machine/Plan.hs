@@ -168,7 +168,7 @@ instance MonadError e m => MonadError e (PlanT k o m) where
 yield :: o -> Plan k o ()
 yield o = PlanT (\kp ke _ _ -> ke o (kp ()))
 
--- | Like yield, except stops if there is no value to yield. 
+-- | Like yield, except stops if there is no value to yield.
 maybeYield :: Maybe o -> Plan k o ()
 maybeYield = maybe stop yield
 

@@ -123,7 +123,7 @@ fb' +>> pm = MachineT $ runMachineT pm >>= \p ->
 absurdExchange :: Exchange Void a b Void t -> c
 absurdExchange (Request z) = absurd z
 absurdExchange (Respond z) = absurd z
-                              
+
 -- | Run a self-contained 'Effect', converting it back to the base monad.
 runEffect :: Monad m => Effect m o -> m [o]
 runEffect (MachineT m) = m >>= \v ->
