@@ -67,4 +67,19 @@ main =
       , bench "pipes" $ whnf (P.fold (+) 0 id) sourceP
       , bench "conduit" $ whnf drainSC (C.fold (+) 0)
       ]
+  , bgroup "filter"
+      [ bench "machines" $ whnf drainM (M.filtered even)
+      , bench "pipes" $ whnf drainP (P.filter even)
+      , bench "conduit" $ whnf drainC (C.filter even)
+      ]
+  , bgroup "mapM"
+      [ bench "machines" $ whnf drainM (M.autoM Identity)
+      , bench "pipes" $ whnf drainP (P.mapM Identity)
+      , bench "conduit" $ whnf drainC (C.mapM Identity)
+      ]
+  , bgroup "plan-test-machine"
+      [ bench "final" $ whnf drainM (M.final)
+      , bench "finalOr" $ whnf drainM (M.finalOr 0)
+      , bench "buffered" $ whnf drainM (M.buffered 1000)
+      ]
   ]
