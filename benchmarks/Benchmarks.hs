@@ -23,7 +23,7 @@ drainC :: C.Conduit Int Identity a -> ()
 drainC c = runIdentity $ (sourceC C.$= c) C.$$ C.sinkNull
 
 drainSC :: C.Sink Int Identity b -> ()
-drainSC c = runIdentity $ void $ sourceC C.$$ c
+drainSC c = runIdentity $ void $! sourceC C.$$ c
 
 sourceM = M.enumerateFromTo 1 value
 sourceC = C.enumFromTo 1 value
@@ -55,12 +55,12 @@ main =
   , bgroup "take"
       [ bench "machines" $ whnf drainM (M.taking value)
       , bench "pipes" $ whnf drainP (P.take value)
-      , bench "conduit" $ whnf drainSC (C.take value)
+      , bench "conduit" $ whnf drainC (C.isolate value)
       ]
   , bgroup "takeWhile"
       [ bench "machines" $ whnf drainM (M.takingWhile (<= value))
       , bench "pipes" $ whnf drainP (P.takeWhile (<= value))
-      , bench "conduit" $ whnf drainSC (CC.takeWhile (<= value) C.=$= C.sinkNull)
+      , bench "conduit" $ whnf drainC (CC.takeWhile (<= value))
       ]
   , bgroup "fold"
       [ bench "machines" $ whnf drainM (M.fold (+) 0)
