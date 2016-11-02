@@ -46,6 +46,13 @@ type Tee a b c = Machine (T a b) c
 type TeeT m a b c = MachineT m (T a b) c
 
 -- | Compose a pair of pipes onto the front of a Tee.
+--
+-- Examples:
+--
+-- >>> import Data.Machine.Source
+-- >>> run $ tee (source [1..]) (source ['a'..'c']) zipping
+-- [(1,'a'),(2,'b'),(3,'c')]
+--
 tee :: Monad m => ProcessT m a a' -> ProcessT m b b' -> TeeT m a' b' c -> TeeT m a b c
 tee ma mb m = MachineT $ runMachineT m >>= \v -> case v of
   Stop         -> return Stop
@@ -62,7 +69,16 @@ tee ma mb m = MachineT $ runMachineT m >>= \v -> case v of
       return $ Await (\b -> tee ma (g b) $ encased v) R $ tee ma fg $ encased v
 
 -- | `teeT mt ma mb` Use a `Tee` to interleave or combine the outputs of `ma`
---   and `mb`
+--   and `mb`.
+--
+--   The resulting machine will draw from a single source.
+--
+-- Examples:
+--
+-- >>> import Data.Machine.Source
+-- >>> run $ teeT zipping echo echo <~ source [1..5]
+-- [(1,2),(3,4)]
+--
 teeT :: Monad m => TeeT m a b c -> MachineT m k a -> MachineT m k b -> MachineT m k c
 teeT mt ma mb = MachineT $ runMachineT mt >>= \v -> case v of
   Stop         -> return Stop

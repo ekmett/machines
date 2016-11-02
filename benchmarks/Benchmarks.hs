@@ -77,9 +77,19 @@ main =
       , bench "pipes" $ whnf drainP (P.mapM Identity)
       , bench "conduit" $ whnf drainC (C.mapM Identity)
       ]
-  , bgroup "plan-test-machine"
-      [ bench "final" $ whnf drainM (M.final)
-      , bench "finalOr" $ whnf drainM (M.finalOr 0)
-      , bench "buffered" $ whnf drainM (M.buffered 1000)
+  , bgroup "zip"
+      [ bench "machines" $ whnf (\x -> runIdentity $ M.runT_ x)
+                                (M.tee sourceM sourceM M.zipping)
+      , bench "pipes" $ whnf (\x -> runIdentity $ P.runEffect $ P.for x P.discard)
+                             (P.zip sourceP sourceP)
+      , bench "conduit" $ whnf (\x -> runIdentity $ x C.$$ C.sinkNull)
+                               (C.getZipSource $ (,) <$> C.ZipSource sourceC <*> C.ZipSource sourceC)
+      ]
+  , bgroup "last"
+      [ bench "machines" $ whnf drainM (M.final)
+      , bench "pipes" $ whnf P.last sourceP
+      ]
+  , bgroup "buffered"
+      [ bench "machines" $ whnf drainM (M.buffered 1000)
       ]
   ]
