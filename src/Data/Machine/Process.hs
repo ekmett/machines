@@ -348,6 +348,13 @@ ma ~> mp = mp <~ ma
 {-# INLINABLE (~>) #-}
 
 -- | Feed a 'Process' some input.
+--
+-- Examples:
+--
+-- >>> import Data.Machine.Source
+-- >>> run $ supply [1,2,3] echo <~ source [4..6]
+-- [1,2,3,4,5,6]
+--
 supply :: forall f m a b . (Foldable f, Monad m) => f a -> ProcessT m a b -> ProcessT m a b
 supply xs = foldr go id xs
     where
@@ -453,6 +460,13 @@ scan1 func =
 -- |
 -- Like 'scan' only uses supplied function to map and uses Monoid for
 -- associative operation
+--
+-- Examples:
+--
+-- >>> import Data.Machine.Source
+-- >>> run $ mapping getSum <~ scanMap Sum <~ source [1..5]
+-- [0,1,3,6,10,15]
+--
 scanMap :: (Category k, Monoid b) => (a -> b) -> Machine (k a) b
 scanMap f = scan (\b a -> mappend b (f a)) mempty
 {-# INLINABLE scanMap #-}
