@@ -208,6 +208,9 @@ process f (MachineT m) = MachineT (liftM f' m) where
 -- @
 -- 'scan' :: (a -> b -> a) -> a -> Process b a
 -- @
+--
+-- For stateful 'scan' use 'auto' with "Data.Machine.Mealy" machine.
+--
 scan :: Category k => (a -> b -> a) -> a -> Machine (k b) a
 scan func seed = construct $ go seed where
   go cur = do
