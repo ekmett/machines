@@ -51,6 +51,7 @@ module Data.Machine.Process
   , smallest
   , sequencing
   , mapping
+  , traversing
   , reading
   , showing
   , strippingPrefix
@@ -277,7 +278,7 @@ sinkPart_ p = go
                   (go ff)
 
 -- | Apply a monadic function to each element of a 'ProcessT'.
-autoM :: Monad m => (a -> m b) -> ProcessT m a b
+autoM :: (Category k, Monad m) => (a -> m b) -> MachineT m (k a) b
 autoM f = repeatedly $ await >>= lift . f >>= yield
 
 -- |
@@ -341,6 +342,13 @@ sequencing = repeatedly $ do
 -- Apply a function to all values coming from the input
 mapping :: Category k => (a -> b) -> Machine (k a) b
 mapping f = repeatedly $ await >>= yield . f
+
+-- |
+-- Apply an effectful to all values coming from the input.
+--
+-- Alias to 'autoM'.
+traversing :: (Category k, Monad m) => (a -> m b) -> MachineT m (k a) b
+traversing f = repeatedly $ await >>= lift . f >>= yield
 
 -- |
 -- Parse 'Read'able values, only emitting the value if the parse succceeds.
