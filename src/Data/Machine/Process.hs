@@ -35,6 +35,7 @@ module Data.Machine.Process
   , droppingWhile
   , takingWhile
   , buffered
+  , flattened
   , fold
   , fold1
   , scan
@@ -144,6 +145,10 @@ buffered = repeatedly . go [] where
   go acc n = do
     i <- await <|> yield (reverse acc) *> stop
     go (i:acc) $! n-1
+
+-- | Alias to 'asParts'.
+flattened :: Foldable f => Process (f a) a
+flattened = asParts
 
 -- | Build a new 'Machine' by adding a 'Process' to the output of an old 'Machine'
 --
