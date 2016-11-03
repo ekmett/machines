@@ -70,6 +70,9 @@ import Prelude
   hiding (foldr)
 #endif
 
+-- $setup
+-- >>> import Data.Machine.Source
+
 infixr 9 <~
 infixl 9 ~>
 
@@ -141,7 +144,6 @@ buffered = repeatedly . go [] where
   go acc n = do
     i <- await <|> yield (reverse acc) *> stop
     go (i:acc) $! n-1
-
 
 -- | Build a new 'Machine' by adding a 'Process' to the output of an old 'Machine'
 --
@@ -246,6 +248,10 @@ fold1 func = construct $ await >>= go where
 
 -- | Break each input into pieces that are fed downstream
 -- individually.
+--
+-- >>> run (asParts <~ source [[1,2], [3,4]])
+-- [1,2,3,4]
+--
 asParts :: Foldable f => Process (f a) a
 asParts = repeatedly $ await >>= traverse_ yield
 
