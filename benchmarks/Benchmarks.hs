@@ -79,11 +79,11 @@ main =
       ]
   , bgroup "zip"
       [ bench "machines" $ whnf (\x -> runIdentity $ M.runT_ x)
-                                (M.tee sourceM sourceM M.zipping)
+          (M.capT sourceM sourceM M.zipping)
       , bench "pipes" $ whnf (\x -> runIdentity $ P.runEffect $ P.for x P.discard)
-                             (P.zip sourceP sourceP)
+          (P.zip sourceP sourceP)
       , bench "conduit" $ whnf (\x -> runIdentity $ x C.$$ C.sinkNull)
-                               (C.getZipSource $ (,) <$> C.ZipSource sourceC <*> C.ZipSource sourceC)
+          (C.getZipSource $ (,) <$> C.ZipSource sourceC <*> C.ZipSource sourceC)
       ]
   , bgroup "last"
       [ bench "machines" $ whnf drainM (M.final)

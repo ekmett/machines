@@ -17,7 +17,7 @@ module Data.Machine.Tee
   , T(..)
   , tee, teeT
   , addL, addR
-  , capL, capR
+  , capL, capR, capT
   , zipWithT
   , zipWith
   , zipping
@@ -28,7 +28,7 @@ import Data.Machine.Plan
 import Data.Machine.Process
 import Data.Machine.Type
 import Data.Machine.Source
-import Prelude hiding ((.),id, zipWith)
+import Prelude hiding ((.), id, zipWith)
 
 -------------------------------------------------------------------------------
 -- Tees
@@ -113,6 +113,13 @@ capL s t = fit cappedT $ addL s t
 capR :: Monad m => SourceT m b -> TeeT m a b c -> ProcessT m a c
 capR s t = fit cappedT $ addR s t
 {-# INLINE capR #-}
+
+-- | Tie off both inputs to a tee by connecting them to known sources.
+--   This is recommended over capping each side separately, as it is
+--   far more efficient.
+capT :: Monad m => SourceT m a -> SourceT m b -> TeeT m a b c -> SourceT m c
+capT l r t = plug $ tee l r t
+{-# INLINE capT #-}
 
 -- | Natural transformation used by 'capL' and 'capR'.
 cappedT :: T a a b -> Is a b

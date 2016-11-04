@@ -19,6 +19,7 @@ module Data.Machine.Source
   , repeated
   , cycled
   , cap
+  , plug
   , iterated
   , replicated
   , enumerateFromTo
@@ -31,7 +32,7 @@ import Data.Foldable
 import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
-import Prelude (Enum, Int, Maybe, Monad, ($))
+import Prelude (Enum, Int, Maybe, Monad, ($), (>>=), return)
 
 -------------------------------------------------------------------------------
 -- Source
@@ -108,6 +109,18 @@ source xs = foldr go stopped xs
 --
 cap :: Process a b -> Source a -> Source b
 cap l r = l <~ r
+
+-- |
+-- You can transform any 'MachineT' into a 'SourceT', blocking its input.
+--
+-- This is used by capT, and capWye, and allows an efficient way to plug
+-- together machines of different input languages.
+--
+plug :: Monad m => MachineT m k o -> SourceT m o
+plug (MachineT m) = MachineT $ m >>= \x -> case x of
+  Yield o k     -> return (Yield o (plug k))
+  Stop          -> return Stop
+  Await _ _ h   -> runMachineT $ plug h
 
 -- | 'iterated' @f x@ returns an infinite source of repeated applications
 -- of @f@ to @x@
