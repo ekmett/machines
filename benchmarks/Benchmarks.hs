@@ -92,4 +92,9 @@ main =
   , bgroup "buffered"
       [ bench "machines" $ whnf drainM (M.buffered 1000)
       ]
+  , bgroup "concat"
+      [ bench "machines" $ whnf drainM (M.mapping (replicate 10) M.~> M.asParts)
+      , bench "pipes" $ whnf drainP (P.map (replicate 10) P.>-> P.concat)
+      , bench "conduit" $ whnf drainC (C.map (replicate 10) C.$= C.concat)
+      ]
   ]
