@@ -182,9 +182,14 @@ supply xs = foldr go id xs
 -- Convert a machine into a process, with a little bit of help.
 --
 -- @
--- 'process' 'Data.Machine.Tee.L' :: 'Data.Machine.Process.Process' a c -> 'Data.Machine.Tee.Tee' a b c
--- 'process' 'Data.Machine.Tee.R' :: 'Data.Machine.Process.Process' b c -> 'Data.Machine.Tee.Tee' a b c
--- 'process' 'id' :: 'Data.Machine.Process.Process' a b -> 'Data.Machine.Process.Process' a b
+-- choose :: 'Data.Machine.Tee.T' a b x -> (a, b) -> x
+-- choose t = case t of
+--   'Data.Machine.Tee.L' -> 'fst'
+--   'Data.Machine.Tee.R' -> 'snd'
+-- 
+-- 'process' choose :: 'Data.Machine.Tee.Tee' a b c -> 'Data.Machine.Process.Process' (a, b) c
+-- 'process' choose :: 'Data.Machine.Tee.Tee' a b c -> 'Data.Machine.Process.Process' (a, b) c 
+-- 'process' ('const' 'id') :: 'Data.Machine.Process.Process' a b -> 'Data.Machine.Process.Process' a b
 -- @
 process :: Monad m => (forall a. k a -> i -> a) -> MachineT m k o -> ProcessT m i o
 process f (MachineT m) = MachineT (liftM f' m) where
