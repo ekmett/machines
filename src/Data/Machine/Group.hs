@@ -25,7 +25,7 @@ taggedBy f = construct $ await >>= go
   where go x = do
           yield (Right x)
           y <- await
-          if not (f x y) then (yield (Left ()) >> go y) else go y
+          if not (f x y) then yield (Left ()) >> go y else go y
 
 
 -- | Run a machine multiple times over partitions of the input stream specified by

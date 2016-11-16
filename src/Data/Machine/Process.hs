@@ -58,10 +58,9 @@ module Data.Machine.Process
   , strippingPrefix
   ) where
 
-import Control.Category (Category)
+import Control.Category
 import Control.Arrow (Kleisli(..))
 import Control.Monad (liftM)
-import Control.Monad.Trans.Class
 import Data.Foldable hiding (fold)
 import Data.Machine.Is
 import Data.Machine.Plan
@@ -108,10 +107,7 @@ class AutomatonM x where
   autoT :: Monad m => x m a b -> ProcessT m a b
 
 instance AutomatonM Kleisli where
-  autoT (Kleisli k) = repeatedly $ do
-    i <- await
-    r <- lift (k i)
-    yield r
+  autoT (Kleisli k) = autoM k
 
 -- | The trivial 'Process' that simply repeats each input it receives.
 --
@@ -125,7 +121,6 @@ instance AutomatonM Kleisli where
 --
 -- Examples:
 --
--- >>> import Data.Machine.Source
 -- >>> run $ echo <~ source [1..5]
 -- [1,2,3,4,5]
 --
@@ -152,7 +147,6 @@ prepended = before echo . traverse_ yield
 --
 -- Examples:
 --
--- >>> import Data.Machine.Source
 -- >>> run $ filtered even <~ source [1..5]
 -- [2,4]
 --
@@ -161,9 +155,7 @@ filtered p =
     loop
   where
     loop = encased
-         $ Await (\a -> case p a of
-            True  -> encased (Yield a loop)
-            False -> loop)
+         $ Await (\a -> if p a then encased (Yield a loop) else loop)
            Refl
            stopped
 {-# INLINABLE filtered #-}
@@ -177,13 +169,12 @@ filtered p =
 --
 -- Examples:
 --
--- >>> import Data.Machine.Source
 -- >>> run $ dropping 3 <~ source [1..5]
 -- [4,5]
 --
 dropping :: Int -> Process a a
-dropping cnt0 =
-    loop cnt0
+dropping =
+    loop
   where
     loop cnt
       | cnt <= 0
@@ -201,13 +192,12 @@ dropping cnt0 =
 --
 -- Examples:
 --
--- >>> import Data.Machine.Source
 -- >>> run $ taking 3 <~ source [1..5]
 -- [1,2,3]
 --
 taking :: Int -> Process a a
-taking cnt0 =
-    loop cnt0
+taking =
+    loop
   where
     loop cnt
       | cnt <= 0
@@ -226,7 +216,6 @@ taking cnt0 =
 --
 -- Examples:
 --
--- >>> import Data.Machine.Source
 -- >>> run $ takingWhile (< 3) <~ source [1..5]
 -- [1,2]
 --
@@ -235,9 +224,7 @@ takingWhile p =
     loop
   where
     loop = encased
-         $ Await (\a -> case p a of
-            True  -> encased (Yield a loop)
-            False -> stopped)
+         $ Await (\a -> if p a then encased (Yield a loop) else stopped)
            Refl
            stopped
 {-# INLINABLE takingWhile #-}
@@ -253,7 +240,6 @@ takingWhile p =
 --
 -- Examples:
 --
--- >>> import Data.Machine.Source
 -- >>> run $ droppingWhile (< 3) <~ source [1..5]
 -- [3,4,5]
 --
@@ -262,9 +248,7 @@ droppingWhile p =
     loop
   where
     loop = encased
-         $ Await (\a -> case p a of
-            True  -> loop
-            False -> encased (Yield a echo))
+         $ Await (\a -> if p a then loop else encased (Yield a echo))
            Refl
            stopped
 {-# INLINABLE droppingWhile #-}
@@ -285,7 +269,6 @@ droppingWhile p =
 --
 -- Examples:
 --
--- >>> import Data.Machine.Source
 -- >>> run $ buffered 3 <~ source [1..6]
 -- [[1,2,3],[4,5,6]]
 --
@@ -351,12 +334,11 @@ ma ~> mp = mp <~ ma
 --
 -- Examples:
 --
--- >>> import Data.Machine.Source
 -- >>> run $ supply [1,2,3] echo <~ source [4..6]
 -- [1,2,3,4,5,6]
 --
 supply :: forall f m a b . (Foldable f, Monad m) => f a -> ProcessT m a b -> ProcessT m a b
-supply xs = foldr go id xs
+supply = foldr go id
     where
       go :: a ->
             (ProcessT m a b -> ProcessT m a b) ->
@@ -378,9 +360,9 @@ supply xs = foldr go id xs
 -- choose t = case t of
 --   'Data.Machine.Tee.L' -> 'fst'
 --   'Data.Machine.Tee.R' -> 'snd'
--- 
+--
 -- 'process' choose :: 'Data.Machine.Tee.Tee' a b c -> 'Data.Machine.Process.Process' (a, b) c
--- 'process' choose :: 'Data.Machine.Tee.Tee' a b c -> 'Data.Machine.Process.Process' (a, b) c 
+-- 'process' choose :: 'Data.Machine.Tee.Tee' a b c -> 'Data.Machine.Process.Process' (a, b) c
 -- 'process' ('const' 'id') :: 'Data.Machine.Process.Process' a b -> 'Data.Machine.Process.Process' a b
 -- @
 process :: Monad m => (forall a. k a -> i -> a) -> MachineT m k o -> ProcessT m i o
@@ -412,9 +394,11 @@ process f (MachineT m) = MachineT (liftM f' m) where
 --
 -- Examples:
 --
--- >>> import Data.Machine.Source
 -- >>> run $ scan (+) 0 <~ source [1..5]
 -- [0,1,3,6,10,15]
+--
+-- >>> run $ scan (\a _ -> a + 1) 0 <~ source [1..5]
+-- [0,1,2,3,4,5]
 --
 scan :: Category k => (a -> b -> a) -> a -> Machine (k b) a
 scan func seed =
@@ -442,7 +426,6 @@ scan func seed =
 --
 -- Examples:
 --
--- >>> import Data.Machine.Source
 -- >>> run $ scan1 (+) <~ source [1..5]
 -- [1,3,6,10,15]
 --
@@ -463,7 +446,6 @@ scan1 func =
 --
 -- Examples:
 --
--- >>> import Data.Machine.Source
 -- >>> run $ mapping getSum <~ scanMap Sum <~ source [1..5]
 -- [0,1,3,6,10,15]
 --
@@ -492,11 +474,13 @@ scanMap f = scan (\b a -> mappend b (f a)) mempty
 --
 -- Examples:
 --
--- >>> import Data.Machine.Source
 -- >>> run $ fold (+) 0 <~ source [1..5]
 -- [15]
 --
-fold :: Category k => (a -> a -> a) -> a -> Machine (k a) a
+-- >>> run $ fold (\a _ -> a + 1) 0 <~ source [1..5]
+-- [5]
+--
+fold :: Category k => (a -> b -> a) -> a -> Machine (k b) a
 fold func =
   let step t = t `seq` encased
              $ Await (step . func t)
@@ -519,7 +503,6 @@ fold func =
 --
 -- Examples:
 --
--- >>> import Data.Machine.Source
 -- >>> run $ fold1 (+) <~ source [1..5]
 -- [15]
 --
@@ -543,7 +526,6 @@ fold1 func =
 --
 -- Examples:
 --
--- >>> import Data.Machine.Source
 -- >>> run $ asParts <~ source [[1..3],[4..6]]
 -- [1,2,3,4,5,6]
 --
@@ -556,8 +538,14 @@ asParts =
   in  step
 {-# INLINABLE asParts #-}
 
+-- | Break each input into pieces that are fed downstream
+-- individually.
+--
+-- Alias for @asParts@
+--
 flattened :: Foldable f => Process (f a) a
 flattened = asParts
+{-# INLINABLE flattened #-}
 
 -- | @sinkPart_ toParts sink@ creates a process that uses the
 -- @toParts@ function to break input into a tuple of @(passAlong,
@@ -586,7 +574,6 @@ sinkPart_ p = go
 --
 -- Examples:
 --
--- >>> import Data.Machine.Source
 -- >>> runT $ autoM Left <~ source [3, 4]
 -- Left 3
 --
@@ -615,7 +602,6 @@ autoM f =
 --
 -- Examples:
 --
--- >>> import Data.Machine.Source
 -- >>> runT $ final <~ source [1..10]
 -- [10]
 -- >>> runT $ final <~ source []
@@ -644,17 +630,16 @@ final =
 --
 -- Examples:
 --
--- >>> import Data.Machine.Source
 -- >>> runT $ finalOr (-1) <~ source [1..10]
 -- [10]
 -- >>> runT $ finalOr (-1) <~ source []
 -- [-1]
 --
 finalOr :: Category k => a -> Machine (k a) a
-finalOr o =
+finalOr =
   let step x = encased (Await step id (emit x))
       emit x = encased (Yield x stopped)
-  in encased $ Await step id (emit o)
+  in step
 {-# INLINABLE finalOr #-}
 
 -- |
@@ -698,7 +683,6 @@ smallest = fold1 min
 --
 -- Examples:
 --
--- >>> import Data.Machine.Source
 -- >>> runT $ sequencing <~ source [Just 3, Nothing]
 -- Nothing
 --
@@ -720,7 +704,6 @@ sequencing = autoM id
 --
 -- Examples:
 --
--- >>> import Data.Machine.Source
 -- >>> runT $ mapping (*2) <~ source [1..3]
 -- [2,4,6]
 --
@@ -775,5 +758,4 @@ strippingPrefix mp mb = MachineT $ runMachineT mp >>= \v -> case v of
         | otherwise -> return Stop
       Await f ki ff ->
         return $ Await (MachineT . verify b nxt . f)
-                       ki
-                       (MachineT $ verify b nxt ff)
+                    ki (MachineT $ verify b nxt ff)

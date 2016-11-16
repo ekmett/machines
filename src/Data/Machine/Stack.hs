@@ -33,16 +33,17 @@ peek = do
   a <- pop
   push a
   return a
+{-# INLINABLE peek #-}
 
 -- | Push back into the input stream
 push :: a -> Plan (Stack a) b ()
 push a = awaits (Push a)
+{-# INLINABLE push #-}
 
 -- | Pop the next value in the input stream
 pop :: Plan (Stack a) b a
 pop = awaits Pop
-
--- TODO: make this a class?
+{-# INLINABLE pop #-}
 
 -- | Stream outputs from one 'Machine' into another with the possibility
 -- of pushing inputs back.
@@ -60,3 +61,4 @@ stack up down =
         Yield o up'          -> up'     `stack` down' o
         Await up' req ffU    -> encased (Await (\a -> up' a `stack` encased stepD) req
                                                (      ffU   `stack` encased stepD))
+{-# INLINABLE stack #-}

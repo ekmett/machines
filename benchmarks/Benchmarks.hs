@@ -1,5 +1,6 @@
 module Main (main) where
 
+import Control.Applicative
 import Control.Monad (void)
 import Control.Monad.Identity
 import Criterion.Main
@@ -9,6 +10,7 @@ import qualified Data.Conduit.List as C
 import qualified Data.Machine      as M
 import qualified Pipes             as P
 import qualified Pipes.Prelude     as P
+import Prelude
 
 value :: Int
 value = 1000000

@@ -18,7 +18,6 @@ module Data.Machine.MealyT
   , scanMealyT
   , scanMealyTM
   , embedMealyT
-  , autoT
   ) where
 
 import Data.Machine
@@ -28,6 +27,7 @@ import Data.Pointed
 import Control.Monad.Trans
 import Control.Monad.Identity
 import qualified Control.Category as C
+import Prelude
 
 -- | 'Mealy' machine, with monadic effects
 newtype MealyT m a b = MealyT { runMealyT :: a -> m (b, MealyT m a b) }
@@ -66,7 +66,7 @@ instance Monad m => Arrow (MealyT m) where
   arr f = r where r = MealyT (\a -> return (f a, r))
   first (MealyT m) = MealyT $ \(a,c) ->
     do (b, n) <- m a
-       return ((b, c), (first n))
+       return ((b, c), first n)
 
 arrPure :: (a -> b) -> MealyT Identity a b
 arrPure = arr

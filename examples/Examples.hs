@@ -22,7 +22,7 @@ slurpHandle h = clean <$> slurp where
   clean = either (\(SomeException _) -> []) id
   slurp = try $ do { s <- hGetLine h; (s:) <$> slurpHandle h }
 
--- read a file, returning each line in a list 
+-- read a file, returning each line in a list
 readLines :: FilePath -> IO [String]
 readLines f = withFile f ReadMode slurpHandle
 
@@ -41,8 +41,8 @@ slurpHandlePlan h = lift (slurpHandle h) >>= yield
  -}
 
 -- | getFileLines reads each line out of the given file and pumps them into the given process.
-getFileLines :: FilePath -> ProcessT IO String a -> SourceT IO a 
-getFileLines path proc = src ~> proc where 
+getFileLines :: FilePath -> ProcessT IO String a -> SourceT IO a
+getFileLines path proc = src ~> proc where
   src :: SourceT IO String
   src = construct $ lift (openFile path ReadMode) >>= slurpLinesPlan
   slurpLinesPlan :: Handle -> PlanT k String IO ()
@@ -97,7 +97,7 @@ uniq = run (supply xs uniqMachine) == [1,2,3] where
   -- (==)  means "groups are contiguous values"
   -- final means "run the 'final' machine over each group"
   uniqMachine :: (Monad m, Eq a) => ProcessT m a a
-  uniqMachine = groupingOn (==) final 
+  uniqMachine = groupingOn (==) final
 
   xs :: [Int]
   xs = [1,2,2,3,3,3]
@@ -109,6 +109,6 @@ def lineWordCount(fileName: String) =
 
 lineWordCount FilePath -> IO (Int, Int)
 lineWordCount path = runHead lineWordCountSrc where
-  lineWordCountSrc = echo 
+  lineWordCountSrc = echo
 -}
 
