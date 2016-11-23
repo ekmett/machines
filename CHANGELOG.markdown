@@ -44,7 +44,7 @@
 
 0.2.4
 -----
-* Added `asPats`, `sinkPart_`, `autoM`, and `fitM`
+* Added `asParts`, `sinkPart_`, `autoM`, and `fitM`
 
 0.2.1
 -----

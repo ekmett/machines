@@ -35,6 +35,7 @@ module Data.Machine.Process
   , droppingWhile
   , takingWhile
   , buffered
+  , flattened
   , fold
   , fold1
   , scan
@@ -50,6 +51,7 @@ module Data.Machine.Process
   , smallest
   , sequencing
   , mapping
+  , traversing
   , reading
   , showing
   , strippingPrefix
@@ -69,6 +71,9 @@ import Prelude
 #if !(MIN_VERSION_base(4,8,0))
   hiding (foldr)
 #endif
+
+-- $setup
+-- >>> import Data.Machine.Source
 
 infixr 9 <~
 infixl 9 ~>
@@ -142,6 +147,9 @@ buffered = repeatedly . go [] where
     i <- await <|> yield (reverse acc) *> stop
     go (i:acc) $! n-1
 
+-- | Alias to 'asParts'.
+flattened :: Foldable f => Process (f a) a
+flattened = asParts
 
 -- | Build a new 'Machine' by adding a 'Process' to the output of an old 'Machine'
 --
@@ -205,6 +213,9 @@ process f (MachineT m) = MachineT (liftM f' m) where
 -- @
 -- 'scan' :: (a -> b -> a) -> a -> Process b a
 -- @
+--
+-- For stateful 'scan' use 'auto' with "Data.Machine.Mealy" machine.
+--
 scan :: Category k => (a -> b -> a) -> a -> Machine (k b) a
 scan func seed = construct $ go seed where
   go cur = do
@@ -251,6 +262,10 @@ fold1 func = construct $ await >>= go where
 
 -- | Break each input into pieces that are fed downstream
 -- individually.
+--
+-- >>> run (asParts <~ source [[1,2], [3,4]])
+-- [1,2,3,4]
+--
 asParts :: Foldable f => Process (f a) a
 asParts = repeatedly $ await >>= traverse_ yield
 
@@ -271,7 +286,7 @@ sinkPart_ p = go
                   (go ff)
 
 -- | Apply a monadic function to each element of a 'ProcessT'.
-autoM :: Monad m => (a -> m b) -> ProcessT m a b
+autoM :: (Category k, Monad m) => (a -> m b) -> MachineT m (k a) b
 autoM f = repeatedly $ await >>= lift . f >>= yield
 
 -- |
@@ -335,6 +350,13 @@ sequencing = repeatedly $ do
 -- Apply a function to all values coming from the input
 mapping :: Category k => (a -> b) -> Machine (k a) b
 mapping f = repeatedly $ await >>= yield . f
+
+-- |
+-- Apply an effectful to all values coming from the input.
+--
+-- Alias to 'autoM'.
+traversing :: (Category k, Monad m) => (a -> m b) -> MachineT m (k a) b
+traversing f = repeatedly $ await >>= lift . f >>= yield
 
 -- |
 -- Parse 'Read'able values, only emitting the value if the parse succceeds.

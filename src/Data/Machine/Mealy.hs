@@ -45,7 +45,19 @@ import Data.Semigroup
 import Data.Sequence as Seq
 import Prelude hiding ((.),id)
 
+-- $setup
+-- >>> import Data.Machine.Source
+
 -- | 'Mealy' machines
+--
+-- ==== Examples
+--
+-- We can enumerate inputs:
+--
+-- >>> let countingMealy = unfoldMealy (\i x -> ((i, x), i + 1)) 0
+-- >>> run (auto countingMealy <~ source "word")
+-- [(0,'w'),(1,'o'),(2,'r'),(3,'d')]
+--
 newtype Mealy a b = Mealy { runMealy :: a -> (b, Mealy a b) }
 
 instance Functor (Mealy a) where
