@@ -23,6 +23,7 @@ module Data.Machine.Process
     Process
   , ProcessT
   , Automaton(..)
+  , AutomatonM(..)
   , process
   -- ** Common Processes
   , (<~), (~>)
@@ -59,6 +60,7 @@ module Data.Machine.Process
 
 import Control.Applicative
 import Control.Category (Category)
+import Control.Arrow (Kleisli(..))
 import Control.Monad (liftM, when, replicateM_)
 import Control.Monad.Trans.Class
 import Data.Foldable hiding (fold)
@@ -102,6 +104,15 @@ instance Automaton (->) where
 
 instance Automaton Is where
   auto Refl = echo
+
+class AutomatonM x where
+  autoT :: Monad m => x m a b -> ProcessT m a b
+
+instance AutomatonM Kleisli where
+  autoT (Kleisli k) = repeatedly $ do
+    i <- await
+    r <- lift (k i)
+    yield r
 
 -- | The trivial 'Process' that simply repeats each input it receives.
 echo :: Process a a
