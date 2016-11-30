@@ -18,7 +18,7 @@ module Data.Machine.Wye
   , Y(..)
   , wye
   , addX, addY
-  , capX, capY
+  , capX, capY, capWye
   ) where
 
 import Control.Category
@@ -85,20 +85,25 @@ addX :: Monad m => ProcessT m a b -> WyeT m b c d -> WyeT m a c d
 addX p = wye p echo
 {-# INLINE addX #-}
 
--- | Precompose a pipe onto the right input of a tee.
+-- | Precompose a pipe onto the right input of a wye.
 addY :: Monad m => ProcessT m b c -> WyeT m a c d -> WyeT m a b d
 addY = wye echo
 {-# INLINE addY #-}
 
--- | Tie off one input of a tee by connecting it to a known source.
+-- | Tie off one input of a wye by connecting it to a known source.
 capX :: Monad m => SourceT m a -> WyeT m a b c -> ProcessT m b c
 capX s t = process (capped Right) (addX s t)
 {-# INLINE capX #-}
 
--- | Tie off one input of a tee by connecting it to a known source.
+-- | Tie off one input of a wye by connecting it to a known source.
 capY :: Monad m => SourceT m b -> WyeT m a b c -> ProcessT m a c
 capY s t = process (capped Left) (addY s t)
 {-# INLINE capY #-}
+
+-- | Tie off both inputs of a wye by connecting them to known sources.
+capWye :: Monad m => SourceT m a -> SourceT m b -> WyeT m a b c -> SourceT m c
+capWye a b = plug . wye a b
+{-# INLINE capWye #-}
 
 -- | Natural transformation used by 'capX' and 'capY'
 capped :: (a -> Either a a) -> Y a a b -> a -> b

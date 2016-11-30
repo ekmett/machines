@@ -16,18 +16,19 @@ groupingOn :: Monad m => (a -> a -> Bool) -> ProcessT m a b -> ProcessT m a b
 groupingOn f m = taggedBy f ~> partitioning m
 
 -- | Mark a transition point between two groups as a function of adjacent elements.
--- @
--- 'runT' ('supply' [1,2,2] ('taggedBy' (==))) == [Right 1, Left (), Right 2, Right 2]
--- @
+-- Examples
+--
+-- >>> runT $ supply [1,2,2] (taggedBy (==))
+-- [Right 1,Left (),Right 2,Right 2]
 taggedBy :: Monad m => (a -> a -> Bool) -> ProcessT m a (Either () a)
 taggedBy f = construct $ await >>= go
   where go x = do
           yield (Right x)
           y <- await
-          if not (f x y) then (yield (Left ()) >> go y) else go y
+          if not (f x y) then yield (Left ()) >> go y else go y
 
 
--- | Run a machine multiple times over partitions of the input stream specified by 
+-- | Run a machine multiple times over partitions of the input stream specified by
 -- Left () values.
 partitioning :: Monad m => ProcessT m a b -> ProcessT m (Either () a) b
 partitioning s = go s where
@@ -54,5 +55,5 @@ partitioning s = go s where
 -- | input matching condition as first input of cont.
 -- | If await fails, stop.
 awaitUntil :: Monad m => (a -> Bool) -> (a -> ProcessT m a b) -> ProcessT m a b
-awaitUntil f cont = encased $ Await g Refl (encased Stop)
+awaitUntil f cont = encased $ Await g Refl stopped
   where g a = if f a then cont a else awaitUntil f cont

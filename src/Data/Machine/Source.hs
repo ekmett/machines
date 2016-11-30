@@ -19,6 +19,7 @@ module Data.Machine.Source
   , repeated
   , cycled
   , cap
+  , plug
   , iterated
   , replicated
   , enumerateFromTo
@@ -26,13 +27,12 @@ module Data.Machine.Source
   , unfoldT
   ) where
 
-import Control.Category
 import Control.Monad.Trans
 import Data.Foldable
 import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
-import Prelude (Enum, Eq, Int, Maybe, Monad, otherwise, succ, (==), (>>), ($))
+import Prelude (Enum, Int, Maybe, Monad, ($), (>>=), return)
 
 -------------------------------------------------------------------------------
 -- Source
@@ -45,16 +45,59 @@ type Source b = forall k. Machine k b
 type SourceT m b = forall k. MachineT m k b
 
 -- | Repeat the same value, over and over.
+--
+-- This can be constructed from a plan with
+-- @
+-- repeated :: o -> Source o
+-- repeated = repeatedly . yield
+-- @
+--
+-- Examples:
+--
+-- >>> run $ taking 5 <~ repeated 1
+-- [1,1,1,1,1]
+--
 repeated :: o -> Source o
-repeated = repeatedly . yield
+repeated o =
+    loop
+  where
+    loop = encased (Yield o loop)
 
 -- | Loop through a 'Foldable' container over and over.
+--
+-- This can be constructed from a plan with
+-- @
+-- cycled :: Foldable f => f b -> Source b
+-- cycled = repeatedly (traverse_ yield xs)
+-- @
+--
+-- Examples:
+--
+-- >>> run $ taking 5 <~ cycled [1,2]
+-- [1,2,1,2,1]
+--
 cycled :: Foldable f => f b -> Source b
-cycled xs = repeatedly (traverse_ yield xs)
+cycled xs = foldr go (cycled xs) xs
+  where
+    go x m = encased $ Yield x m
 
 -- | Generate a 'Source' from any 'Foldable' container.
+--
+-- This can be constructed from a plan with
+-- @
+-- source :: Foldable f => f b -> Source b
+-- source = construct (traverse_ yield xs)
+-- @
+--
+-- Examples:
+--
+-- >>> run $ source [1,2]
+-- [1,2]
+--
 source :: Foldable f => f b -> Source b
-source xs = construct (traverse_ yield xs)
+source = foldr go stopped
+  where
+    go x m = encased $ Yield x m
 
 -- |
 -- You can transform a 'Source' with a 'Process'.
@@ -66,6 +109,18 @@ source xs = construct (traverse_ yield xs)
 --
 cap :: Process a b -> Source a -> Source b
 cap l r = l <~ r
+
+-- |
+-- You can transform any 'MachineT' into a 'SourceT', blocking its input.
+--
+-- This is used by capT, and capWye, and allows an efficient way to plug
+-- together machines of different input languages.
+--
+plug :: Monad m => MachineT m k o -> SourceT m o
+plug (MachineT m) = MachineT $ m >>= \x -> case x of
+  Yield o k     -> return (Yield o (plug k))
+  Stop          -> return Stop
+  Await _ _ h   -> runMachineT $ plug h
 
 -- | 'iterated' @f x@ returns an infinite source of repeated applications
 -- of @f@ to @x@
@@ -80,11 +135,14 @@ replicated :: Int -> a -> Source a
 replicated n x = repeated x ~> taking n
 
 -- | Enumerate from a value to a final value, inclusive, via 'succ'
-enumerateFromTo :: (Enum a, Eq a) => a -> a -> Source a
-enumerateFromTo start end = construct (go start) where
-  go i
-    | i == end  = yield i
-    | otherwise = yield i >> go (succ i)
+--
+-- Examples:
+--
+-- >>> run $ enumerateFromTo 1 3
+-- [1,2,3]
+--
+enumerateFromTo :: Enum a => a -> a -> Source a
+enumerateFromTo start end = source [ start .. end ]
 
 -- | 'unfold' @k seed@ The function takes the element and returns Nothing if it
 --   is done producing values or returns Just (a,r), in which case, @a@ is
