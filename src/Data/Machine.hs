@@ -15,6 +15,7 @@ module Data.Machine
   , module Data.Machine.Mealy
   , module Data.Machine.Plan
   , module Data.Machine.Process
+  , module Data.Machine.Seeking
   , module Data.Machine.Source
   , module Data.Machine.Tee
   , module Data.Machine.Type
@@ -26,6 +27,7 @@ import Data.Machine.Mealy
 import Data.Machine.Moore
 import Data.Machine.Plan
 import Data.Machine.Process
+import Data.Machine.Seeking
 import Data.Machine.Source
 import Data.Machine.Tee
 import Data.Machine.Type
