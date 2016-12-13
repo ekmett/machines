@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE TupleSections #-}
 
 -----------------------------------------------------------------------------
@@ -26,6 +27,7 @@ import Control.Applicative
 import Data.Pointed
 import Control.Monad.Trans
 import Control.Monad.Identity
+import Data.Profunctor
 import qualified Control.Category as C
 import Prelude
 
@@ -52,6 +54,23 @@ instance Monad m => Monad (MealyT m a) where
   MealyT g >>= f = MealyT $ \a ->
     do (b, MealyT _h) <- g a
        runMealyT (f b) a
+
+-- | Profunctor Example:
+--
+-- >>> embedMealyT (dimap (+21) (+1) (arr (+1))) [1,2,3 :: Int]
+-- [24,25,26]
+--
+instance Functor m => Profunctor (MealyT m) where
+  rmap = fmap
+  {-# INLINE rmap #-}
+  lmap f = go where
+    go (MealyT m) = MealyT $ \a -> fmap (\(b,n) -> (b, go n)) (m (f a))
+  {-# INLINE lmap #-}
+#if MIN_VERSION_profunctors(3,1,1)
+  dimap f g = go where
+    go (MealyT m) = MealyT $ \a -> fmap (\(b,n) -> (g b, go n)) (m (f a))
+  {-# INLINE dimap #-}
+#endif
 
 instance Monad m => C.Category (MealyT m) where
   {-# INLINE id #-}
