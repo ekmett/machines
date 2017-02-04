@@ -1,3 +1,9 @@
+next
+----
+* Revamp `Setup.hs` to use `cabal-doctest`. This makes `distributive` build
+  with `Cabal-1.25`, and makes the `doctest`s work with `cabal new-build` and
+  sandboxes.
+
 0.6.1
 -----
 * Bumped upper version bounds for `comonad`, `conduit-combinators`, `criterion`, `distributive`, `pointed`, and `transformers`
