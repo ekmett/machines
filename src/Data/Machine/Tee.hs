@@ -87,12 +87,12 @@ teeT mt ma mb = MachineT $ runMachineT mt >>= \v -> case v of
     Stop          -> runMachineT $ teeT ff stopped mb
     Yield a k     -> runMachineT $ teeT (f a) k mb
     Await g rq fg ->
-      return $ Await (\r -> teeT mt (g r) mb) rq $ teeT mt fg mb
+      return $ Await (\r -> teeT (encased v) (g r) mb) rq $ teeT (encased v) fg mb
   Await f R ff -> runMachineT mb >>= \u -> case u of
     Stop          -> runMachineT $ teeT ff ma stopped
     Yield a k     -> runMachineT $ teeT (f a) ma k
     Await g rq fg ->
-      return $ Await (\r -> teeT mt ma (g r)) rq $ teeT mt ma fg
+      return $ Await (\r -> teeT (encased v) ma (g r)) rq $ teeT (encased v) ma fg
 
 -- | Precompose a pipe onto the left input of a tee.
 addL :: Monad m => ProcessT m a b -> TeeT m b c d -> TeeT m a c d
