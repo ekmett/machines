@@ -3,6 +3,14 @@ next
 * Revamp `Setup.hs` to use `cabal-doctest`. This makes it build
   with `Cabal-2.0`, and makes the `doctest`s work with `cabal new-build` and
   sandboxes.
+* Various performance improvements
+* Add the `flattened` and `traversing` functions, as well as the `AutomatonM`
+  class, to `Data.Machine.Process`
+* Add the `Data.Machine.MealyT` module
+* Add `plug` to `Data.Machine.Source`
+* Add `capT` to `Data.Machine.Tee`
+* Fix a bug in `teeT` that caused it to run actions too many times
+* Add `capWye` to `Data.Machine.Wye`
 
 0.6.1
 -----
