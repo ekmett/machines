@@ -25,6 +25,7 @@ extra-source-files:
   config
   README.markdown
   CHANGELOG.markdown
+  Warning.hs
   examples/LICENSE
   examples/machines-examples.cabal
   examples/*.hs
