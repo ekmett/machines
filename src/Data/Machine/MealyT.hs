@@ -49,8 +49,12 @@ instance Applicative m => Applicative (MealyT m a) where
   MealyT m <*> MealyT n = MealyT $ \a -> (\(mb, mm) (nb, nm) -> (mb nb, mm <*> nm)) <$> m a <*> n a
 
 instance Monad m => Monad (MealyT m a) where
+#if !MIN_VERSION_base(4,8,0)
+  -- pre-AMP
   {-# INLINE return #-}
   return b = r where r = MealyT (const (return (b, r))) -- Stolen from Pointed
+#endif
+
   MealyT g >>= f = MealyT $ \a ->
     do (b, MealyT _h) <- g a
        runMealyT (f b) a

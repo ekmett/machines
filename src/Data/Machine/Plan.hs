@@ -39,6 +39,7 @@ import Control.Monad.IO.Class
 import Control.Monad.State.Class
 import Control.Monad.Reader.Class
 import Control.Monad.Error.Class
+import qualified Control.Monad.Fail as Fail
 import Control.Monad.Writer.Class
 import Data.Functor.Identity
 import Prelude hiding ((.),id)
@@ -114,10 +115,13 @@ instance Monad (PlanT k o m) where
   return = pure
   {-# INLINE return #-}
   PlanT m >>= f = PlanT (\kp ke kr kf -> m (\a -> runPlanT (f a) kp ke kr kf) ke kr kf)
+  {-# INLINE (>>=) #-}
   (>>) = (*>)
   {-# INLINE (>>) #-}
+  fail = Fail.fail
+
+instance Fail.MonadFail (PlanT k o m) where
   fail _ = PlanT (\_ _ _ kf -> kf)
-  {-# INLINE (>>=) #-}
 
 instance MonadPlus (PlanT k o m) where
   mzero = empty

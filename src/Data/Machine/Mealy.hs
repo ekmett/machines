@@ -95,12 +95,12 @@ unfoldMealy f = go where
 
 -- | slow diagonalization
 instance Monad (Mealy a) where
-  return b = r where r = Mealy (const (b, r))
+  return = pure
   {-# INLINE return #-}
   m >>= f = Mealy $ \a -> case runMealy m a of
     (b, m') -> (fst (runMealy (f b) a), m' >>= f)
   {-# INLINE (>>=) #-}
-  _ >> n = n
+  (>>) = (*>)
   {-# INLINE (>>) #-}
 
 instance Profunctor Mealy where
