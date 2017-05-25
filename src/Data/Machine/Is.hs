@@ -15,7 +15,7 @@ module Data.Machine.Is
   ) where
 
 import Control.Category
-import Data.Monoid
+import Data.Semigroup
 import Prelude
 
 -- | Witnessed type equality
@@ -33,10 +33,14 @@ instance Ord (Is a b) where
   Refl `compare` Refl = EQ
   {-# INLINE compare #-}
 
+instance (a ~ b) => Semigroup (Is a b) where
+  Refl <> Refl = Refl
+  {-# INLINE (<>) #-}
+
 instance (a ~ b) => Monoid (Is a b) where
   mempty = Refl
   {-# INLINE mempty #-}
-  mappend Refl Refl = Refl
+  mappend = (<>)
   {-# INLINE mappend #-}
 
 instance (a ~ b) => Read (Is a b) where
