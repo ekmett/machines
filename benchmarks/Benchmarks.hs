@@ -33,9 +33,16 @@ drainS :: (S.Stream (S.Of Int) Identity () -> S.Stream (S.Of Int) Identity ())
     -> ()
 drainS s = runIdentity $ S.effects $ sourceS & s
 
+sourceM :: M.Source Int
 sourceM = M.enumerateFromTo 1 value
+
+sourceC :: Monad m => C.Producer m Int
 sourceC = C.enumFromTo 1 value
+
+sourceP :: Monad m => P.Producer' Int m ()
 sourceP = P.each [1..value]
+
+sourceS :: Monad m => S.Stream (S.Of Int) m ()
 sourceS = S.each [1..value]
 
 main :: IO ()
@@ -79,8 +86,8 @@ main =
       ]
   , bgroup "fold"
       [ bench "machines" $ whnf drainM (M.fold (+) 0)
-      , bench "streaming" $ whnf (S.fold (+) 0 id) sourceS
-      , bench "pipes" $ whnf (P.fold (+) 0 id) sourceP
+      , bench "streaming" $ whnf runIdentity $ (S.fold (+) 0 id) sourceS
+      , bench "pipes" $ whnf runIdentity $ (P.fold (+) 0 id) sourceP
       , bench "conduit" $ whnf drainSC (C.fold (+) 0)
       ]
   , bgroup "filter"
@@ -111,10 +118,24 @@ main =
       , bench "pipes" $ whnf drainP (P.map (replicate 10) P.>-> P.concat)
       , bench "conduit" $ whnf drainC (C.map (replicate 10) C.$= C.concat)
       ]
+  , bgroup "toList"
+      [ bench "machines"  $ whnf (length . runIdentity) $ M.runT sourceM
+      , bench "streaming" $ whnf (length . runIdentity)
+                          $ S.toList sourceS >>= (\(xs S.:> _) -> return xs)
+      , bench "pipes"     $ whnf (length . runIdentity) $ P.toListM sourceP
+      , bench "conduit"   $ whnf (length . runIdentity)
+                          $ sourceC C.$$ CC.sinkList
+      ]
+  , bgroup "toListIO"
+      [ bench "machines"  $ whnfIO $ M.runT sourceM
+      , bench "streaming" $ whnfIO $ S.toList sourceS
+      , bench "pipes"     $ whnfIO $ P.toListM sourceP
+      , bench "conduit"   $ whnfIO $ sourceC C.$$ CC.sinkList
+      ]
   , bgroup "last"
       [ bench "machines" $ whnf drainM (M.final)
-      , bench "streaming" $ whnf S.last sourceS
-      , bench "pipes" $ whnf P.last sourceP
+      , bench "streaming" $ whnf runIdentity $ S.last sourceS
+      , bench "pipes" $ whnf runIdentity $ P.last sourceP
       ]
   , bgroup "buffered"
       [ bench "machines" $ whnf drainM (M.buffered 1000)
