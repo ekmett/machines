@@ -87,16 +87,16 @@ main =
       , bench "conduit" $ whnf (\x -> runIdentity $ x C.$$ C.sinkNull)
           (C.getZipSource $ (,) <$> C.ZipSource sourceC <*> C.ZipSource sourceC)
       ]
+  , bgroup "concat"
+      [ bench "machines" $ whnf drainM (M.mapping (replicate 10) M.~> M.asParts)
+      , bench "pipes" $ whnf drainP (P.map (replicate 10) P.>-> P.concat)
+      , bench "conduit" $ whnf drainC (C.map (replicate 10) C.$= C.concat)
+      ]
   , bgroup "last"
       [ bench "machines" $ whnf drainM (M.final)
       , bench "pipes" $ whnf P.last sourceP
       ]
   , bgroup "buffered"
       [ bench "machines" $ whnf drainM (M.buffered 1000)
-      ]
-  , bgroup "concat"
-      [ bench "machines" $ whnf drainM (M.mapping (replicate 10) M.~> M.asParts)
-      , bench "pipes" $ whnf drainP (P.map (replicate 10) P.>-> P.concat)
-      , bench "conduit" $ whnf drainC (C.map (replicate 10) C.$= C.concat)
       ]
   ]
