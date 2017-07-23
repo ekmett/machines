@@ -45,6 +45,38 @@ sourceP = P.each [1..value]
 sourceS :: Monad m => S.Stream (S.Of Int) m ()
 sourceS = S.each [1..value]
 
+compositeM :: M.Process Int Int
+compositeM =
+       M.filtered even
+    M.~> M.mapping (+1)
+    M.~> M.dropping 1000
+    M.~> M.mapping (+1)
+    M.~> M.filtered (\x -> x `mod` 2 == 0)
+
+compositeS :: Monad m => S.Stream (S.Of Int) m () -> S.Stream (S.Of Int) m ()
+compositeS x =
+    S.filter even x
+    & S.map (+1)
+    & S.drop 1000
+    & S.map (+1)
+    & S.filter (\x -> x `mod` 2 == 0)
+
+compositeP :: Monad m => P.Pipe Int Int m ()
+compositeP =
+      P.filter even
+    P.>-> P.map (+1)
+    P.>-> P.drop 1000
+    P.>-> P.map (+1)
+    P.>-> P.filter (\x -> x `mod` 2 == 0)
+
+compositeC :: Monad m => C.Conduit Int m Int
+compositeC =
+       C.filter even
+    C.=$= C.map (+1)
+    C.=$= (C.drop 1000 >> C.awaitForever C.yield)
+    C.=$= C.map (+1)
+    C.=$= C.filter (\x -> x `mod` 2 == 0)
+
 main :: IO ()
 main =
   defaultMain
@@ -118,6 +150,14 @@ main =
       , bench "pipes" $ whnf drainP (P.map (replicate 10) P.>-> P.concat)
       , bench "conduit" $ whnf drainC (C.map (replicate 10) C.$= C.concat)
       ]
+  , bgroup "last"
+      [ bench "machines" $ whnf drainM (M.final)
+      , bench "streaming" $ whnf runIdentity $ S.last sourceS
+      , bench "pipes" $ whnf runIdentity $ P.last sourceP
+      ]
+  , bgroup "buffered"
+      [ bench "machines" $ whnf drainM (M.buffered 1000)
+      ]
   , bgroup "toList"
       [ bench "machines"  $ whnf (length . runIdentity) $ M.runT sourceM
       , bench "streaming" $ whnf (length . runIdentity)
@@ -132,12 +172,16 @@ main =
       , bench "pipes"     $ whnfIO $ P.toListM sourceP
       , bench "conduit"   $ whnfIO $ sourceC C.$$ CC.sinkList
       ]
-  , bgroup "last"
-      [ bench "machines" $ whnf drainM (M.final)
-      , bench "streaming" $ whnf runIdentity $ S.last sourceS
-      , bench "pipes" $ whnf runIdentity $ P.last sourceP
+  , bgroup "Composite"
+      [ bench "machines"  $ whnf drainM compositeM
+      , bench "streaming" $ whnf drainS compositeS
+      , bench "pipes"     $ whnf drainP compositeP
+      , bench "conduit"   $ whnf drainC compositeC
       ]
-  , bgroup "buffered"
-      [ bench "machines" $ whnf drainM (M.buffered 1000)
+  , bgroup "CompositeIO"
+      [ bench "machines"  $ whnfIO $ M.runT    $ sourceM M.~> compositeM
+      , bench "streaming" $ whnfIO $ S.toList  $ sourceS & compositeS
+      , bench "pipes"     $ whnfIO $ P.toListM $ sourceP P.>-> compositeP
+      , bench "conduit"   $ whnfIO $ sourceC C.=$= compositeC C.$$ CC.sinkList
       ]
   ]
