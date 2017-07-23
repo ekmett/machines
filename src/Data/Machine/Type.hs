@@ -164,6 +164,7 @@ appliedTo mis blocking ss f g m n = MachineT $ runMachineT m >>= \v -> case v of
 -}
 
 -- | Stop feeding input into model, taking only the effects.
+{-# INLINABLE runT_ #-}
 runT_ :: Monad m => MachineT m k b -> m ()
 runT_ m = runMachineT m >>= \v -> case v of
   Stop        -> return ()
@@ -171,6 +172,7 @@ runT_ m = runMachineT m >>= \v -> case v of
   Await _ _ e -> runT_ e
 
 -- | Stop feeding input into model and extract an answer
+{-# INLINABLE runT #-}
 runT :: Monad m => MachineT m k b -> m [b]
 runT (MachineT m) = m >>= \v -> case v of
   Stop        -> return []
