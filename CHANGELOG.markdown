@@ -1,5 +1,5 @@
-next
-----
+0.6.3
+-----
 * Add `Semigroup` instance for `Is`
 * Add `MonadFail` instance for `PlanT`
 * Support `doctest-0.12`
