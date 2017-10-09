@@ -14,6 +14,7 @@ module Data.Machine.Runner
     , runT
     , runT_ ) where
 
+import Data.Machine.Is
 import Data.Machine.Type
 import Control.Monad (liftM)
 #if !MIN_VERSION_base (4,8,0)
@@ -25,13 +26,13 @@ import Data.Monoid (Monoid (..))
 --
 -- @runT = foldrT (:) []@
 foldrT :: Monad m => (o -> b -> b) -> b -> MachineT m k o -> m b
-foldrT c n = go
+foldrT c n = go . runMachineT
     where
       go m = do
-        step <- runMachineT m
+        step <- m
         case step of
           Stop -> return n
-          Yield o m' -> c o `liftM` go m'
+          Yield o m' -> c o `liftM` go (runTranslateT m' Refl)
           Await _ _ m' -> go m'
 
 -- | Strict left fold over a stream.
@@ -43,7 +44,7 @@ foldlT f = go
         case step of
           Stop -> return b
           Yield o m' -> go (f b o) m'
-          Await _ _ m' -> go b m'
+          Await _ _ m' -> go b (machineT m')
 
 -- | Strict fold over a stream. Items are accumulated on the right:
 --
@@ -75,4 +76,4 @@ runT1 m = do
   case step of
     Stop -> return Nothing
     Yield o _ -> return $ Just o
-    Await _ _ m' -> runT1 m'
+    Await _ _ m' -> runT1 (machineT m')

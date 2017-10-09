@@ -1,5 +1,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Stack
@@ -19,6 +20,7 @@ module Data.Machine.Stack
   , push
   ) where
 
+import Data.Machine.Is
 import Data.Machine.Plan
 import Data.Machine.Type
 
@@ -47,18 +49,13 @@ pop = awaits Pop
 
 -- | Stream outputs from one 'Machine' into another with the possibility
 -- of pushing inputs back.
-stack :: Monad m => MachineT m k a -> MachineT m (Stack a) o -> MachineT m k o
-stack up down =
-  stepMachine down $ \stepD     ->
-  case stepD of
-    Stop                     -> stopped
-    Yield o down'            -> encased (Yield o (up `stack` down'))
-    Await down' (Push a) _   -> encased (Yield a up) `stack` down' ()
-    Await down' Pop ffD      ->
-      stepMachine up $ \stepU   ->
-      case stepU of
-        Stop                 -> stopped `stack` ffD
-        Yield o up'          -> up'     `stack` down' o
-        Await up' req ffU    -> encased (Await (\a -> up' a `stack` encased stepD) req
-                                               (      ffU   `stack` encased stepD))
+stack :: forall m a. (Monad m) => TranslateT m (Stack a) (Is a)
+stack = TranslateT $ \req -> case req of
+  Pop -> return $ Await (\i -> return $ Yield i stack) Refl (return Stop)
+  Push a -> go a
+  where
+    go :: a -> MStep m (Stack a) (Is a) ()
+    go a = return $ Yield () $ TranslateT $ \req -> case req of
+      Pop -> return $ Yield a stack
+      Push b -> go b
 {-# INLINABLE stack #-}

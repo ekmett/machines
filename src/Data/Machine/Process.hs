@@ -86,16 +86,16 @@ infixl 9 ~>
 
 -- | A @'Process' a b@ is a stream transducer that can consume values of type @a@
 -- from its input, and produce values of type @b@ for its output.
-type Process a b = Machine (Is a) b
+type Process a b = Translate b (Is a)
 
 -- | A @'ProcessT' m a b@ is a stream transducer that can consume values of type @a@
 -- from its input, and produce values of type @b@ and has side-effects in the
 -- 'Monad' @m@.
-type ProcessT m a b = MachineT m (Is a) b
+type ProcessT m a b = TranslateT m b (Is a)
 
 -- | An 'Automaton' can be automatically lifted into a 'Process'
 class Automaton k where
-  auto :: k a b -> Process a b
+  auto :: k a b -> Process a (Is b)
 
 instance Automaton (->) where
   auto = mapping
@@ -104,7 +104,7 @@ instance Automaton Is where
   auto Refl = echo
 
 class AutomatonM x where
-  autoT :: Monad m => x m a b -> ProcessT m a b
+  autoT :: Monad m => x m a b -> ProcessT m a (Is b)
 
 instance AutomatonM Kleisli where
   autoT (Kleisli k) = autoM k
@@ -124,15 +124,13 @@ instance AutomatonM Kleisli where
 -- >>> run $ echo <~ source [1..5]
 -- [1,2,3,4,5]
 --
-echo :: Process a a
-echo =
-    loop
-  where
-    loop = encased (Await (\t -> encased (Yield t loop)) Refl stopped)
+echo :: Process a (Is a)
+echo = TranslateT $ \Refl ->
+    return $ Await (\t -> return (Yield t echo)) id (return Stop)
 {-# INLINABLE echo #-}
 
 -- | A 'Process' that prepends the elements of a 'Foldable' onto its input, then repeats its input from there.
-prepended :: Foldable f => f a -> Process a a
+prepended :: Foldable f => f a -> Process a (Is a)
 prepended = before echo . traverse_ yield
 
 -- | A 'Process' that only passes through inputs that match a predicate.
@@ -150,14 +148,13 @@ prepended = before echo . traverse_ yield
 -- >>> run $ filtered even <~ source [1..5]
 -- [2,4]
 --
-filtered :: (a -> Bool) -> Process a a
+filtered :: (a -> Bool) -> Process a (Is a)
 filtered p =
-    loop
+    encased loop
   where
-    loop = encased
-         $ Await (\a -> if p a then encased (Yield a loop) else loop)
-           Refl
-           stopped
+    loop = Await (\a -> if p a then pure (Yield a (encased loop)) else pure loop)
+           id
+           (pure Stop)
 {-# INLINABLE filtered #-}
 
 -- | A 'Process' that drops the first @n@, then repeats the rest.
@@ -172,15 +169,14 @@ filtered p =
 -- >>> run $ dropping 3 <~ source [1..5]
 -- [4,5]
 --
-dropping :: Int -> Process a a
-dropping =
-    loop
+dropping :: Int -> Translate k k
+dropping n = TranslateT $ \req -> loop req n
   where
-    loop cnt
+    loop req cnt
       | cnt <= 0
-      = echo
+      = runTranslateT id req
       | otherwise
-      = encased (Await (\_ -> loop (cnt - 1)) Refl stopped)
+      = pure $ Await (\_ -> loop req (cnt - 1)) req (pure Stop)
 {-# INLINABLE dropping #-}
 
 -- | A 'Process' that passes through the first @n@ elements from its input then stops
@@ -195,15 +191,13 @@ dropping =
 -- >>> run $ taking 3 <~ source [1..5]
 -- [1,2,3]
 --
-taking :: Int -> Process a a
-taking =
-    loop
+taking :: Int -> Translate k k
+taking = loop
   where
-    loop cnt
-      | cnt <= 0
-      = stopped
-      | otherwise
-      = encased (Await (\v -> encased $ Yield v (loop (cnt - 1))) Refl stopped)
+    loop cnt = TranslateT $ \req -> pure $
+      if cnt <= 0
+        then Stop
+        else Await (\v -> pure $ Yield v (loop (cnt - 1))) req (pure Stop)
 {-# INLINABLE taking #-}
 
 -- | A 'Process' that passes through elements until a predicate ceases to hold, then stops
@@ -216,17 +210,17 @@ taking =
 --
 -- Examples:
 --
--- >>> run $ takingWhile (< 3) <~ source [1..5]
+-- >>> run $ takingWhile (\Refl x -> x < 3) <~ source [1..5 :: Int]
 -- [1,2]
 --
-takingWhile :: (a -> Bool) -> Process a a
+takingWhile :: (forall a. k a -> a -> Bool) -> Translate k k
 takingWhile p =
     loop
   where
-    loop = encased
-         $ Await (\a -> if p a then encased (Yield a loop) else stopped)
-           Refl
-           stopped
+    loop = TranslateT $ \req -> pure $
+      Await (\a -> pure $ if p req a then Yield a loop else Stop)
+      req 
+      (pure Stop)
 {-# INLINABLE takingWhile #-}
 
 -- | A 'Process' that drops elements while a predicate holds
@@ -240,17 +234,16 @@ takingWhile p =
 --
 -- Examples:
 --
--- >>> run $ droppingWhile (< 3) <~ source [1..5]
+-- >>> run $ droppingWhile (\Refl x -> x < 3) <~ source [1..5 :: Int]
 -- [3,4,5]
 --
-droppingWhile :: (a -> Bool) -> Process a a
-droppingWhile p =
-    loop
+droppingWhile :: forall k m. (Monad m) => (forall a. k a -> a -> Bool) -> TranslateT m k k
+droppingWhile p = TranslateT $ \req -> pure (loop req)
   where
-    loop = encased
-         $ Await (\a -> if p a then loop else encased (Yield a echo))
-           Refl
-           stopped
+    loop :: forall a. k a -> Step m k k a
+    loop req = Await (\a -> pure $ if p req a then loop req else Yield a id)
+           req
+           (pure Stop)
 {-# INLINABLE droppingWhile #-}
 
 -- | Chunk up the input into `n` element lists.
@@ -278,7 +271,7 @@ droppingWhile p =
 -- >>> run $ buffered 3 <~ source []
 -- []
 --
-buffered :: Int -> Process a [a]
+buffered :: forall m a. Monad m => Int -> ProcessT m a (Is [a])
 buffered n =
     begin
   where
@@ -287,24 +280,25 @@ buffered n =
     begin     = encased
               $ Await (\v -> loop (v:) (n - 1))
                       Refl
-                      stopped
+                      (pure Stop)
 
     -- The buffer (a diff list) contains elements, and
     -- we're at the requisite number, yield the
     -- buffer and restart
-    loop dl 0 = encased
+    loop :: ([a] -> [a]) -> Int -> MStep m (Is [a]) (Is a) [a]
+    loop dl 0 = pure
               $ Yield (dl []) begin
 
     -- The buffer contains elements and we're not yet
     -- done, continue waiting, but if we don't receive
     -- anything, then yield what we have and stop.
-    loop dl r = encased
+    loop dl r = pure
               $ Await (\v -> loop (dl . (v:)) (r - 1))
                       Refl
                       (finish dl)
 
     -- All data has been retrieved, emit and stop.
-    finish dl = encased
+    finish dl = pure
               $ Yield (dl []) stopped
 {-# INLINABLE buffered #-}
 
@@ -315,20 +309,15 @@ buffered n =
 -- ('<~') :: 'Process' c d -> 'Data.Machine.Tee.Tee' a b c -> 'Data.Machine.Tee.Tee' a b d
 -- ('<~') :: 'Process' b c -> 'Machine' k b -> 'Machine' k c
 -- @
-(<~) :: Monad m => ProcessT m b c -> MachineT m k b -> MachineT m k c
-mp <~ ma = MachineT $ runMachineT mp >>= \v -> case v of
-  Stop          -> return Stop
-  Yield o k     -> return $ Yield o (k <~ ma)
-  Await f Refl ff -> runMachineT ma >>= \u -> case u of
-    Stop          -> runMachineT $ ff <~ stopped
-    Yield o k     -> runMachineT $ f o <~ k
-    Await g kg fg -> return $ Await (\a -> encased v <~ g a) kg (encased v <~ fg)
-{-# INLINABLE (<~) #-}
+(<~) :: Monad m => ProcessT m b c -> TranslateT m (Is b) k -> TranslateT m c k
+(<~) = flip (.)
+{-# INLINE (<~) #-}
 
 -- | Flipped ('<~').
-(~>) :: Monad m => MachineT m k b -> ProcessT m b c -> MachineT m k c
+(~>) :: Monad m => TranslateT m (Is b) k -> ProcessT m b c -> TranslateT m c k
 ma ~> mp = mp <~ ma
-{-# INLINABLE (~>) #-}
+{-# INLINE (~>) #-}
+
 
 -- | Feed a 'Process' some input.
 --
@@ -338,18 +327,9 @@ ma ~> mp = mp <~ ma
 -- [1,2,3,4,5,6]
 --
 supply :: forall f m a b . (Foldable f, Monad m) => f a -> ProcessT m a b -> ProcessT m a b
-supply = foldr go id
-    where
-      go :: a ->
-            (ProcessT m a b -> ProcessT m a b) ->
-            ProcessT m a b ->
-            ProcessT m a b
-      go x r m = MachineT $ do
-         v <- runMachineT m
-         case v of
-           Stop -> return Stop
-           Await f Refl _ -> runMachineT $ r (f x)
-           Yield o k -> return $ Yield o (go x r k)
+supply xs p = starve (foldr go stopped xs) id ~> p
+  where
+    go x m = encased (Yield x m)
 {-# INLINABLE supply #-}
 
 -- |
@@ -365,11 +345,14 @@ supply = foldr go id
 -- 'process' choose :: 'Data.Machine.Tee.Tee' a b c -> 'Data.Machine.Process.Process' (a, b) c
 -- 'process' ('const' 'id') :: 'Data.Machine.Process.Process' a b -> 'Data.Machine.Process.Process' a b
 -- @
-process :: Monad m => (forall a. k a -> i -> a) -> MachineT m k o -> ProcessT m i o
-process f (MachineT m) = MachineT (liftM f' m) where
+process ::
+    forall m o i k. Monad m =>
+    (forall a. k a -> i -> a) -> TranslateT m o k -> ProcessT m i o
+process f (TranslateT m) = TranslateT $ \req -> liftM f' (m req) where
+  f' :: forall t. Step m o k t -> Step m o (Is i) t
   f' (Yield o k)     = Yield o (process f k)
   f' Stop            = Stop
-  f' (Await g kir h) = Await (process f . g . f kir) Refl (process f h)
+  f' (Await g kir h) = Await (fmap f' . g . f kir) Refl (f' <$> h)
 
 -- |
 -- Construct a 'Process' from a left-scanning operation.
@@ -400,15 +383,14 @@ process f (MachineT m) = MachineT (liftM f' m) where
 -- >>> run $ scan (\a _ -> a + 1) 0 <~ source [1..5]
 -- [0,1,2,3,4,5]
 --
-scan :: Category k => (a -> b -> a) -> a -> Machine (k b) a
+scan :: forall k a b. (Category k) => (a -> b -> a) -> a -> Translate (Is a) (k b)
 scan func seed =
-  let step t = t `seq` encased
-             $ Yield t
+  let step t = t `seq` pure $ Yield t
              $ encased
              $ Await (step . func t)
                      id
-                     stopped
-  in  step seed
+                     (pure Stop)
+  in  machineT (step seed)
 {-# INLINABLE scan #-}
 
 -- |
@@ -429,15 +411,15 @@ scan func seed =
 -- >>> run $ scan1 (+) <~ source [1..5]
 -- [1,3,6,10,15]
 --
-scan1 :: Category k => (a -> a -> a) -> Machine (k a) a
+scan1 :: forall k a. (Category k) => (a -> a -> a) -> Translate (Is a) (k a)
 scan1 func =
-  let step t = t `seq` encased
+  let step t = t `seq` pure
              $ Yield t
              $ encased
              $ Await (step . func t)
                      id
-                     stopped
-  in  encased $ Await step id stopped
+                     (pure Stop)
+  in  encased $ Await step id (pure Stop)
 {-# INLINABLE scan1 #-}
 
 -- |
@@ -449,7 +431,7 @@ scan1 func =
 -- >>> run $ mapping getSum <~ scanMap Sum <~ source [1..5]
 -- [0,1,3,6,10,15]
 --
-scanMap :: (Category k, Monoid b) => (a -> b) -> Machine (k a) b
+scanMap :: (Category k, Monoid b) => (a -> b) -> Translate (Is b) (k a)
 scanMap f = scan (\b a -> mappend b (f a)) mempty
 {-# INLINABLE scanMap #-}
 
@@ -480,13 +462,12 @@ scanMap f = scan (\b a -> mappend b (f a)) mempty
 -- >>> run $ fold (\a _ -> a + 1) 0 <~ source [1..5]
 -- [5]
 --
-fold :: Category k => (a -> b -> a) -> a -> Machine (k b) a
+fold :: (Category k) => (a -> b -> a) -> a -> Translate (Is a) (k b)
 fold func =
-  let step t = t `seq` encased
-             $ Await (step . func t)
+  let step t = t `seq` pure $ Await (step . func t)
                      id
-                     (encased $ Yield t stopped)
-  in  step
+                     (pure $ Yield t stopped)
+  in machineT . step
 {-# INLINABLE fold #-}
 
 -- |
@@ -506,13 +487,13 @@ fold func =
 -- >>> run $ fold1 (+) <~ source [1..5]
 -- [15]
 --
-fold1 :: Category k => (a -> a -> a) -> Machine (k a) a
+fold1 :: (Category k) => (a -> a -> a) -> Translate (Is a) (k a)
 fold1 func =
-  let step t = t `seq` encased
+  let step t = t `seq` pure
              $ Await (step . func t)
                      id
-                     (encased $ Yield t stopped)
-  in  encased $ Await step id stopped
+                     (pure $ Yield t stopped)
+  in  encased $ Await step id (pure Stop)
 {-# INLINABLE fold1 #-}
 
 -- | Break each input into pieces that are fed downstream
@@ -529,13 +510,12 @@ fold1 func =
 -- >>> run $ asParts <~ source [[1..3],[4..6]]
 -- [1,2,3,4,5,6]
 --
-asParts :: Foldable f => Process (f a) a
+asParts :: (Category k, Foldable f, Applicative m) => TranslateT m (Is a) (k (f a))
 asParts =
-  let step = encased
-           $ Await (foldr (\b s -> encased (Yield b s)) step)
+  let step = Await (pure . foldr (\b s -> Yield b (encased s)) step)
                    id
-                   stopped
-  in  step
+                   (pure Stop)
+  in  encased step
 {-# INLINABLE asParts #-}
 
 -- | Break each input into pieces that are fed downstream
@@ -543,7 +523,7 @@ asParts =
 --
 -- Alias for @asParts@
 --
-flattened :: Foldable f => Process (f a) a
+flattened :: (Category k, Foldable f, Applicative m) => TranslateT m (Is a) (k (f a))
 flattened = asParts
 {-# INLINABLE flattened #-}
 
@@ -552,16 +532,18 @@ flattened = asParts
 -- sinkPart)@ for which the second projection is given to the supplied
 -- @sink@ 'ProcessT' (that produces no output) while the first
 -- projection is passed down the pipeline.
-sinkPart_ :: Monad m => (a -> (b,c)) -> ProcessT m c Void -> ProcessT m a b
-sinkPart_ p = go
-  where go m = MachineT $ runMachineT m >>= \v -> case v of
-          Stop -> return Stop
+sinkPart_ :: forall m a b c. Monad m => (a -> (b,c)) -> ProcessT m c (Is Void) -> ProcessT m a (Is b)
+sinkPart_ p m = TranslateT $ \Refl -> go <$> runTranslateT m Refl
+  where
+    go :: Step m (Is Void) (Is c) Void -> Step m (Is b) (Is a) b
+    go v = case v of
+          Stop -> Stop
           Yield o _ -> absurd o
-          Await f Refl ff -> return $
+          Await f Refl ff ->
             Await (\x -> let (keep,sink) = p x
-                         in encased . Yield keep $ go (f sink))
+                         in Yield keep . encased . go <$> f sink)
                   Refl
-                  (go ff)
+                  (go <$> ff)
 
 -- | Apply a monadic function to each element of a 'ProcessT'.
 --
@@ -580,11 +562,12 @@ sinkPart_ p = go
 -- >>> runT $ autoM Right <~ source [3, 4]
 -- Right [3,4]
 --
-autoM :: (Category k, Monad m) => (a -> m b) -> MachineT m (k a) b
+autoM :: (Monad m) => (a -> m b) -> ProcessT m a (Is b)
 autoM f =
     loop
   where
-    loop = encased (Await (\t -> MachineT (flip Yield loop `liftM` f t)) id stopped)
+    loop = encased $
+        Await (\t -> flip Yield loop <$> f t) id (pure Stop)
 {-# INLINABLE autoM #-}
 
 -- |
@@ -607,11 +590,11 @@ autoM f =
 -- >>> runT $ final <~ source []
 -- []
 --
-final :: Category k => Machine (k a) a
-final =
-  let step x = encased (Await step id (emit x))
-      emit x = encased (Yield x stopped)
-  in encased $ Await step id stopped
+final :: Translate k k
+final = TranslateT $ \req ->
+  let step x = pure $ Await step req (emit x)
+      emit x = pure (Yield x stopped)
+  in pure $ Await (\t -> step t) req (pure Stop)
 {-# INLINABLE final #-}
 
 -- |
@@ -635,11 +618,11 @@ final =
 -- >>> runT $ finalOr (-1) <~ source []
 -- [-1]
 --
-finalOr :: Category k => a -> Machine (k a) a
-finalOr =
-  let step x = encased (Await step id (emit x))
-      emit x = encased (Yield x stopped)
-  in step
+finalOr :: Category k => a -> Translate (Is a) (k a)
+finalOr x = TranslateT $ \Refl ->
+  let step x = pure $ Await step id (emit x)
+      emit x = pure (Yield x stopped)
+  in step x
 {-# INLINABLE finalOr #-}
 
 -- |
@@ -658,13 +641,13 @@ intersperse sep = construct $ await >>= go where
 
 -- |
 -- Return the maximum value from the input
-largest :: (Category k, Ord a) => Machine (k a) a
+largest :: (Category k, Ord a) => Translate (Is a) (k a)
 largest = fold1 max
 {-# INLINABLE largest #-}
 
 -- |
 -- Return the minimum value from the input
-smallest :: (Category k, Ord a) => Machine (k a) a
+smallest :: (Category k, Ord a) => Translate (Is a) (k a)
 smallest = fold1 min
 {-# INLINABLE smallest #-}
 
@@ -689,7 +672,7 @@ smallest = fold1 min
 -- >>> runT $ sequencing <~ source [Just 3, Just 4]
 -- Just [3,4]
 --
-sequencing :: (Category k, Monad m) => MachineT m (k (m a)) a
+sequencing :: (Monad m) => ProcessT m (m b) (Is b)
 sequencing = autoM id
 {-# INLINABLE sequencing #-}
 
@@ -707,18 +690,18 @@ sequencing = autoM id
 -- >>> runT $ mapping (*2) <~ source [1..3]
 -- [2,4,6]
 --
-mapping :: Category k => (a -> b) -> Machine (k a) b
+mapping :: (a -> b) -> Process a (Is b)
 mapping f =
     loop
   where
-    loop = encased (Await (\t -> encased (Yield (f t) loop)) id stopped)
+    loop = encased (Await (\t -> pure (Yield (f t) loop)) id (pure Stop))
 {-# INLINABLE mapping #-}
 
 -- |
 -- Apply an effectful to all values coming from the input.
 --
 -- Alias to 'autoM'.
-traversing :: (Category k, Monad m) => (a -> m b) -> MachineT m (k a) b
+traversing :: (Monad m) => (a -> m b) -> ProcessT m a (Is b)
 traversing = autoM
 
 -- |
@@ -733,29 +716,38 @@ reading = repeatedly $ do
 
 -- |
 -- Convert 'Show'able values to 'String's
-showing :: (Category k, Show a) => Machine (k a) String
+showing :: (Show a) => Process a (Is String)
 showing = mapping show
 {-# INLINABLE showing #-}
+
+strippingPrefixWith ::
+    forall m j k. (Monad m) =>
+    (forall t . j t -> t -> t -> Bool) ->
+    TranslateT m j k -> TranslateT m j k -> TranslateT m j k
+strippingPrefixWith eq mp mb = TranslateT $ \req -> go req (runTranslateT mp req)
+  where
+    go :: j t -> MStep m j k t -> MStep m j k t
+    go req mstep = mstep >>= \v -> case v of
+      Stop          -> runTranslateT mb req
+      Yield b k     -> verify req b k (runTranslateT mb req)
+      Await f ki ff ->
+        return $ Await (go req . f) ki (go req ff)
+    verify :: j t -> t -> TranslateT m j k -> MStep m j k t -> MStep m j k t
+    verify req b nxt cur = cur >>= \u -> case u of
+      Stop -> return Stop
+      Yield b' nxt'
+        | eq req b b' -> runTranslateT (strippingPrefixWith eq nxt nxt') req
+        | otherwise -> return Stop
+      Await f ki ff ->
+        return $ Await (verify req b nxt . f)
+                    ki (verify req b nxt ff)
 
 -- |
 -- 'strippingPrefix' @mp mb@ Drops the given prefix from @mp@. It stops if @mb@
 -- did not start with the prefix given, or continues streaming after the
 -- prefix, if @mb@ did.
 strippingPrefix :: (Eq b, Monad m)
-                => MachineT m (k a) b
-                -> MachineT m (k a) b
-                -> MachineT m (k a) b
-strippingPrefix mp mb = MachineT $ runMachineT mp >>= \v -> case v of
-  Stop          -> runMachineT mb
-  Yield b k     -> verify b k mb
-  Await f ki ff ->
-    return $ Await (\a -> strippingPrefix (f a) mb) ki (strippingPrefix ff mb)
-  where
-    verify b nxt cur = runMachineT cur >>= \u -> case u of
-      Stop -> return Stop
-      Yield b' nxt'
-        | b == b'   -> runMachineT $ strippingPrefix nxt nxt'
-        | otherwise -> return Stop
-      Await f ki ff ->
-        return $ Await (MachineT . verify b nxt . f)
-                    ki (MachineT $ verify b nxt ff)
+                => TranslateT m (Is b) k
+                -> TranslateT m (Is b) k
+                -> TranslateT m (Is b) k
+strippingPrefix = strippingPrefixWith $ \Refl -> (==)

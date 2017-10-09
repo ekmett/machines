@@ -27,22 +27,24 @@ module Data.Machine.Source
   , unfoldT
   ) where
 
+import Control.Category
 import Control.Monad.Trans
 import Data.Foldable
+import Data.Machine.Is
 import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
-import Prelude (Enum, Int, Maybe, Monad, ($), (>>=), return)
+import Prelude (Enum, Int, Maybe, Monad, ($), (>>=), return, flip)
 
 -------------------------------------------------------------------------------
 -- Source
 -------------------------------------------------------------------------------
 
 -- | A 'Source' never reads from its inputs.
-type Source b = forall k. Machine k b
+type Source b = forall k. Translate b k
 
 -- | A 'SourceT' never reads from its inputs, but may have monadic side-effects.
-type SourceT m b = forall k. MachineT m k b
+type SourceT m b = forall k. TranslateT m b k
 
 -- | Repeat the same value, over and over.
 --
@@ -57,7 +59,7 @@ type SourceT m b = forall k. MachineT m k b
 -- >>> run $ taking 5 <~ repeated 1
 -- [1,1,1,1,1]
 --
-repeated :: o -> Source o
+repeated :: o -> Source (Is o)
 repeated o =
     loop
   where
@@ -76,7 +78,7 @@ repeated o =
 -- >>> run $ taking 5 <~ cycled [1,2]
 -- [1,2,1,2,1]
 --
-cycled :: Foldable f => f b -> Source b
+cycled :: Foldable f => f b -> Source (Is b)
 cycled xs = foldr go (cycled xs) xs
   where
     go x m = encased $ Yield x m
@@ -94,7 +96,7 @@ cycled xs = foldr go (cycled xs) xs
 -- >>> run $ source [1,2]
 -- [1,2]
 --
-source :: Foldable f => f b -> Source b
+source :: Foldable f => f b -> Source (Is b)
 source = foldr go stopped
   where
     go x m = encased $ Yield x m
@@ -107,8 +109,8 @@ source = foldr go stopped
 --
 -- @'cap' l r = l '<~' r@
 --
-cap :: Process a b -> Source a -> Source b
-cap l r = l <~ r
+cap :: Process a (Is b) -> Source (Is a) -> Source (Is b)
+cap = flip (.)
 
 -- |
 -- You can transform any 'MachineT' into a 'SourceT', blocking its input.
@@ -116,22 +118,24 @@ cap l r = l <~ r
 -- This is used by capT, and capWye, and allows an efficient way to plug
 -- together machines of different input languages.
 --
-plug :: Monad m => MachineT m k o -> SourceT m o
-plug (MachineT m) = MachineT $ m >>= \x -> case x of
-  Yield o k     -> return (Yield o (plug k))
-  Stop          -> return Stop
-  Await _ _ h   -> runMachineT $ plug h
+plug :: Monad m => TranslateT m j k -> SourceT m j
+plug (TranslateT m) = TranslateT $ \req -> do
+  let go x = case x of
+        Yield o k     -> return (Yield o (plug k))
+        Stop          -> return Stop
+        Await _ _ h   -> h >>= go
+  m req >>= go
 
 -- | 'iterated' @f x@ returns an infinite source of repeated applications
 -- of @f@ to @x@
-iterated :: (a -> a) -> a -> Source a
+iterated :: (a -> a) -> a -> Source (Is a)
 iterated f x = construct (go x) where
   go a = do
     yield a
     go (f a)
 
 -- | 'replicated' @n x@ is a source of @x@ emitted @n@ time(s)
-replicated :: Int -> a -> Source a
+replicated :: Int -> a -> Source (Is a)
 replicated n x = repeated x ~> taking n
 
 -- | Enumerate from a value to a final value, inclusive, via 'succ'
@@ -141,13 +145,13 @@ replicated n x = repeated x ~> taking n
 -- >>> run $ enumerateFromTo 1 3
 -- [1,2,3]
 --
-enumerateFromTo :: Enum a => a -> a -> Source a
+enumerateFromTo :: Enum a => a -> a -> Source (Is a)
 enumerateFromTo start end = source [ start .. end ]
 
 -- | 'unfold' @k seed@ The function takes the element and returns Nothing if it
 --   is done producing values or returns Just (a,r), in which case, @a@ is
 --   'yield'ed and @r@ is used as the next element in a recursive call.
-unfold :: (r -> Maybe (a, r)) -> r -> Source a
+unfold :: (r -> Maybe (a, r)) -> r -> Source (Is a)
 unfold k seed = construct (go seed)
   where
     go r = for_ (k r) $ \(a, r') -> do
@@ -155,7 +159,7 @@ unfold k seed = construct (go seed)
       go r'
 
 -- | Effectful 'unfold' variant.
-unfoldT :: Monad m => (r -> m (Maybe (a, r))) -> r -> SourceT m a
+unfoldT :: Monad m => (r -> m (Maybe (a, r))) -> r -> SourceT m (Is a)
 unfoldT k seed = construct (go seed)
   where
     go r = do
