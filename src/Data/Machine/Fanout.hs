@@ -14,7 +14,7 @@ import           Data.Monoid        (Monoid (..))
 import           Data.Traversable   (traverse)
 #endif
 
-continue :: ([b] -> r) -> [(a -> b, b)] -> Step (Is a) o r
+continue :: ([b] -> MStep m o (Is a) r) -> [(a -> b, b)] -> Step m o (Is a) r
 continue _ [] = Stop
 continue f ws = Await (f . traverse fst ws) Refl (f $ map snd ws)
 
@@ -27,21 +27,22 @@ semigroupDlist f = case f [] of
 -- values yielded by the processes are combined into a single yield
 -- from the composite process.
 fanout :: forall m a r. (Monad m, Semigroup r)
-       => [ProcessT m a r] -> ProcessT m a r
-fanout = MachineT . go id id
-  where
-    go :: ([(a -> ProcessT m a r, ProcessT m a r)]
-       -> [(a -> ProcessT m a r, ProcessT m a r)])
-       -> ([r] -> [r])
-       -> [ProcessT m a r]
-       -> m (Step (Is a) r (ProcessT m a r))
-    go waiting acc [] = case waiting [] of
-      ws -> return . maybe k (\x -> Yield x $ encased k) $ semigroupDlist acc
-        where k = continue fanout ws
-    go waiting acc (m:ms) = runMachineT m >>= \v -> case v of
-      Stop           -> go waiting acc ms
-      Yield x k      -> go waiting (acc . (x:)) (k:ms)
-      Await f Refl k -> go (waiting . ((f, k):)) acc ms
+       => [ProcessT m a (Is r)] -> ProcessT m a (Is r)
+fanout = undefined
+-- fanout processes = TranslateT $ \Refl -> go id id processes
+--   where
+--     go :: ([(a -> ProcessT m a (Is r), ProcessT m a (Is r))]
+--        -> [(a -> ProcessT m a (Is r), ProcessT m a (Is r))])
+--        -> ([r] -> [r])
+--        -> [ProcessT m a (Is r)]
+--        -> MStep m (Is r) (Is a) r
+--     go waiting acc [] = case waiting [] of
+--       ws -> return . maybe k (\x -> Yield x $ encased k) $ semigroupDlist acc
+--         where k = continue fanout ws
+--     go waiting acc (m:ms) = runMachineT m >>= \v -> case v of
+--       Stop           -> go waiting acc ms
+--       Yield x k      -> go waiting (acc . (x:)) (k:ms)
+--       Await f Refl k -> go (waiting . ((f, k):)) acc ms
 
 -- | Share inputs with each of a list of processes in lockstep. If
 -- none of the processes yields a value, the composite process will
@@ -51,17 +52,18 @@ fanout = MachineT . go id id
 -- number of times, you can use 'fanOutSteps . map (fmap (const ()))'
 -- followed by a 'taking' process.
 fanoutSteps :: forall m a r. (Monad m, Monoid r)
-            => [ProcessT m a r] -> ProcessT m a r
-fanoutSteps = MachineT . go id id
-  where
-    go :: ([(a -> ProcessT m a r, ProcessT m a r)]
-       -> [(a -> ProcessT m a r, ProcessT m a r)])
-       -> ([r] -> [r])
-       -> [ProcessT m a r]
-       -> m (Step (Is a) r (ProcessT m a r))
-    go waiting acc [] = case (waiting [], mconcat (acc [])) of
-      (ws, xs) -> return . Yield xs $ encased (continue fanoutSteps ws)
-    go waiting acc (m:ms) = runMachineT m >>= \v -> case v of
-      Stop           -> go waiting acc ms
-      Yield x k      -> go waiting (acc . (x:)) (k:ms)
-      Await f Refl k -> go (waiting . ((f, k):)) acc ms
+            => [ProcessT m a (Is r)] -> ProcessT m a (Is r)
+fanoutSteps = undefined
+-- fanoutSteps = MachineT . go id id
+--   where
+--     go :: ([(a -> ProcessT m a r, ProcessT m a r)]
+--        -> [(a -> ProcessT m a r, ProcessT m a r)])
+--        -> ([r] -> [r])
+--        -> [ProcessT m a r]
+--        -> m (Step (Is a) r (ProcessT m a r))
+--     go waiting acc [] = case (waiting [], mconcat (acc [])) of
+--       (ws, xs) -> return . Yield xs $ encased (continue fanoutSteps ws)
+--     go waiting acc (m:ms) = runMachineT m >>= \v -> case v of
+--       Stop           -> go waiting acc ms
+--       Yield x k      -> go waiting (acc . (x:)) (k:ms)
+--       Await f Refl k -> go (waiting . ((f, k):)) acc ms

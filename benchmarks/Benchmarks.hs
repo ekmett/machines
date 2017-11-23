@@ -1,6 +1,8 @@
+{-# LANGUAGE GADTs #-}
 module Main (main) where
 
 import Control.Applicative
+import Control.Category
 import Control.Monad (void)
 import Control.Monad.Identity
 import Criterion.Main
@@ -10,12 +12,12 @@ import qualified Data.Conduit.List as C
 import qualified Data.Machine      as M
 import qualified Pipes             as P
 import qualified Pipes.Prelude     as P
-import Prelude
+import Prelude hiding ((.), id)
 
 value :: Int
 value = 1000000
 
-drainM :: M.ProcessT Identity Int o -> ()
+drainM :: M.ProcessT Identity Int (M.Is o) -> ()
 drainM m = runIdentity $ M.runT_ (sourceM M.~> m)
 
 drainP :: P.Proxy () Int () a Identity () -> ()
@@ -45,7 +47,7 @@ main =
       , bench "conduit" $ whnf drainC (C.drop value)
       ]
   , bgroup "dropWhile"
-      [ bench "machines" $ whnf drainM (M.droppingWhile (<= value))
+      [ bench "machines" $ whnf drainM (M.droppingWhile (\M.Refl x -> x <= value))
       , bench "pipes" $ whnf drainP (P.dropWhile (<= value))
       , bench "conduit" $ whnf drainC (CC.dropWhile (<= value))
       ]
@@ -60,7 +62,7 @@ main =
       , bench "conduit" $ whnf drainC (C.isolate value)
       ]
   , bgroup "takeWhile"
-      [ bench "machines" $ whnf drainM (M.takingWhile (<= value))
+      [ bench "machines" $ whnf drainM (M.takingWhile (\M.Refl x -> x <= value))
       , bench "pipes" $ whnf drainP (P.takeWhile (<= value))
       , bench "conduit" $ whnf drainC (CC.takeWhile (<= value))
       ]
@@ -81,7 +83,7 @@ main =
       ]
   , bgroup "zip"
       [ bench "machines" $ whnf (\x -> runIdentity $ M.runT_ x)
-          (M.capT sourceM sourceM M.zipping)
+          (M.capT sourceM sourceM . M.zipping)
       , bench "pipes" $ whnf (\x -> runIdentity $ P.runEffect $ P.for x P.discard)
           (P.zip sourceP sourceP)
       , bench "conduit" $ whnf (\x -> runIdentity $ x C.$$ C.sinkNull)

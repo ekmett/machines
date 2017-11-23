@@ -108,7 +108,7 @@ scanMealyT f a = MealyT (\b -> return (a, scanMealyT f (f a b)))
 scanMealyTM :: Functor m => (a -> b -> m a) -> a -> MealyT m b a
 scanMealyTM f a = MealyT $ \b -> (\x -> (a, scanMealyTM f x)) <$> f a b
 
-autoMealyTImpl :: Monad m => MealyT m a b -> ProcessT m a b
+autoMealyTImpl :: Monad m => MealyT m a b -> ProcessT m a (Is b)
 autoMealyTImpl = construct . go
   where
   go (MealyT f) = do

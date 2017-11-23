@@ -19,6 +19,7 @@ import Control.Monad
 
 import Data.Void
 
+import Data.Machine.Is
 import Data.Machine.Plan
 import Data.Machine.Type
 
@@ -84,12 +85,14 @@ push = construct . go
       => Proxy a' a b' b m r
       -> (b -> Proxy b' b c' c m r)
       -> Proxy a' a c' c m r
-pm >>~ fb = MachineT $ runMachineT pm >>= \p ->
-  case p of
-    Stop                    -> return Stop
-    Yield r n               -> return $ Yield r (n >>~ fb)
-    Await k (Request a') ff -> return $ Await (\a -> k a >>~ fb) (Request a') (ff >>~ fb)
-    Await k (Respond b) _   -> runMachineT (k +>> fb b)
+pm >>~ fb = machineT $ runMachineT pm >>= go
+  where
+    go p =
+      case p of
+        Stop                    -> return Stop
+        Yield r n               -> return $ Yield r (n >>~ fb)
+        Await k (Request a') ff -> return $ Await (\a -> k a >>= go) (Request a') (ff >>= go)
+        Await k (Respond b) _   -> runMachineT ((machineT . k) +>> fb b)
 
 -- | Forward requests followed by responses.
 --   'pull' is the identity of the pull category.
@@ -112,12 +115,14 @@ pull = construct . go
       => (b' -> Proxy a' a b' b m r)
       -> Proxy b' b c' c m r
       -> Proxy a' a c' c m r
-fb' +>> pm = MachineT $ runMachineT pm >>= \p ->
-  case p of
-    Stop                   -> return Stop
-    Yield r n              -> return $ Yield r (fb' +>> n)
-    Await k (Request b') _ -> runMachineT (fb' b' >>~ k)
-    Await k (Respond c) ff -> return $ Await (\c' -> fb' +>> k c') (Respond c) (fb' +>> ff)
+fb' +>> pm = machineT $ runMachineT pm >>= go
+  where
+    go p =
+      case p of
+        Stop                   -> return Stop
+        Yield r n              -> return $ Yield r (fb' +>> n)
+        Await k (Request b') _ -> runMachineT (fb' b' >>~ (machineT . k))
+        Await k (Respond c) ff -> return $ Await (\c' -> runMachineT (fb' +>> machineT (k c'))) (Respond c) (runMachineT $ fb' +>> machineT ff)
 
 -- | It is impossible for an `Exchange` to hold a `Void` value.
 absurdExchange :: Exchange Void a b Void t -> c
@@ -126,7 +131,7 @@ absurdExchange (Respond z) = absurd z
 
 -- | Run a self-contained 'Effect', converting it back to the base monad.
 runEffect :: Monad m => Effect m o -> m [o]
-runEffect (MachineT m) = m >>= \v ->
+runEffect m = runTranslateT m Refl >>= \v ->
   case v of
     Stop      -> return []
     Yield o n -> liftM (o:) (runEffect n)
@@ -134,7 +139,7 @@ runEffect (MachineT m) = m >>= \v ->
 
 -- | Like 'runEffect' but discarding any produced value.
 runEffect_ :: Monad m => Effect m o -> m ()
-runEffect_ (MachineT m) = m >>= \v ->
+runEffect_ m = runTranslateT m Refl >>= \v ->
   case v of
     Stop      -> return ()
     Yield _ n -> runEffect_ n
