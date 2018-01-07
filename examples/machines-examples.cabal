@@ -11,10 +11,12 @@ homepage:      http://github.com/ekmett/machines/
 bug-reports:   http://github.com/ekmett/machines/issues
 copyright:     Copyright (C) 2014 Edward A. Kmett
 synopsis:      Networked stream transducers
-description:   machines examples
+description:   Networked stream transducers
+               .
+               @machines@ examples
 
 build-type:    Simple
-tested-with:   GHC == 7.4.1
+tested-with:   GHC == 7.4.2, GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.2, GHC == 8.2.2, GHC == 8.4.1
 
 source-repository head
   type: git
@@ -28,3 +30,6 @@ library
 
   exposed-modules:
     Examples
+
+  default-language: Haskell2010
+  ghc-options:      -Wall
