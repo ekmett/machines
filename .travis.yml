@@ -78,7 +78,11 @@ before_install:
 install:
   - cabal --version
   - echo "$(${HC} --version) [$(${HC} --print-project-git-commit-id 2> /dev/null || echo '?')]"
-  - BENCH=${BENCH---enable-benchmarks}
+  - if [ dpkg --compare-versions "${HC}" ge "7.10" ]; then
+      BENCH=${BENCH---enable-benchmarks}
+    else
+      BENCH=${BENCH---disable-benchmarks}
+    fi
   - TEST=${TEST---enable-tests}
   - HADDOCK=${HADDOCK-true}
   - INSTALLED=${INSTALLED-true}
