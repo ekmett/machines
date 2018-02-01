@@ -80,6 +80,7 @@ library
     Data.Machine.Type
     Data.Machine.Wye
     Data.Machine.Group
+    Data.Machine.Group.General
     Data.Machine.Pipe
 
   default-language: Haskell2010
