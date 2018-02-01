@@ -5,6 +5,7 @@ import Data.Function ((&))
 import Control.Monad (void)
 import Control.Monad.Identity
 import Criterion.Main
+import Data.Void
 import qualified Data.Conduit      as C
 import qualified Data.Conduit.Combinators as CC
 import qualified Data.Conduit.List as C
@@ -29,14 +30,14 @@ drainP p = runIdentity $ P.runEffect $ P.for (sourceP P.>-> p) P.discard
 drainPIO :: P.Proxy () Int () a IO () -> IO ()
 drainPIO p = P.runEffect $ sourceP P.>-> p P.>-> P.mapM_ (\_ -> return ())
 
-drainC :: C.Conduit Int Identity a -> ()
-drainC c = runIdentity $ (sourceC C.$= c) C.$$ C.sinkNull
+drainC :: C.ConduitT Int a Identity () -> ()
+drainC c = runIdentity $ C.runConduit $ (sourceC C..| c) C..| C.sinkNull
 
-drainCIO :: C.Conduit Int IO a -> IO ()
-drainCIO c = (sourceC C.$= c) C.$$ C.mapM_ (\_ -> return ())
+drainCIO :: C.ConduitT Int a IO () -> IO ()
+drainCIO c = C.runConduit $ (sourceC C..| c) C..| C.mapM_ (\_ -> return ())
 
-drainSC :: C.Sink Int Identity b -> ()
-drainSC c = runIdentity $ void $! sourceC C.$$ c
+drainSC :: C.ConduitT Int Void Identity b -> ()
+drainSC c = runIdentity $ void $! C.runConduit $ sourceC C..| c
 
 drainS :: (S.Stream (S.Of Int) Identity () -> S.Stream (S.Of Int) Identity ())
     -> ()
@@ -48,7 +49,7 @@ drainSIO s = sourceS & s & S.mapM_ (\_ -> return ())
 sourceM :: M.Source Int
 sourceM = M.enumerateFromTo 1 value
 
-sourceC :: Monad m => C.Producer m Int
+sourceC :: Monad m => C.ConduitT i Int m ()
 sourceC = C.enumFromTo 1 value
 
 sourceP :: Monad m => P.Producer' Int m ()
@@ -121,14 +122,14 @@ main =
           (S.zip sourceS sourceS)
       , bench "pipes" $ whnf (\x -> runIdentity $ P.runEffect $ P.for x P.discard)
           (P.zip sourceP sourceP)
-      , bench "conduit" $ whnf (\x -> runIdentity $ x C.$$ C.sinkNull)
+      , bench "conduit" $ whnf (\x -> runIdentity $ C.runConduit $ x C..| C.sinkNull)
           (C.getZipSource $ (,) <$> C.ZipSource sourceC <*> C.ZipSource sourceC)
       ]
   , bgroup "concat"
       [ bench "machines" $ whnf drainM (M.mapping (replicate 10) M.~> M.asParts)
       , bench "streaming" $ whnf drainS (S.concat . S.map (replicate 10))
       , bench "pipes" $ whnf drainP (P.map (replicate 10) P.>-> P.concat)
-      , bench "conduit" $ whnf drainC (C.map (replicate 10) C.$= C.concat)
+      , bench "conduit" $ whnf drainC (C.map (replicate 10) C..| C.concat)
       ]
   , bgroup "last"
       [ bench "machines" $ whnf drainM (M.final)
@@ -144,13 +145,13 @@ main =
                           $ S.toList sourceS >>= (\(xs S.:> _) -> return xs)
       , bench "pipes"     $ whnf (length . runIdentity) $ P.toListM sourceP
       , bench "conduit"   $ whnf (length . runIdentity)
-                          $ sourceC C.$$ CC.sinkList
+                          $ C.runConduit $ sourceC C..| CC.sinkList
       ]
   , bgroup "toListIO"
       [ bench "machines"  $ whnfIO $ M.runT sourceM
       , bench "streaming" $ whnfIO $ S.toList sourceS
       , bench "pipes"     $ whnfIO $ P.toListM sourceP
-      , bench "conduit"   $ whnfIO $ sourceC C.$$ CC.sinkList
+      , bench "conduit"   $ whnfIO $ C.runConduit $ sourceC C..| CC.sinkList
       ]
 
   , bgroup "compose"
@@ -164,7 +165,7 @@ main =
           [ bench "machines"  $ whnf drainM $ m M.~> m M.~> m M.~> m
           , bench "streaming" $ whnf drainS $ \x -> s x & s & s & s
           , bench "pipes"     $ whnf drainP $ p P.>-> p P.>-> p P.>-> p
-          , bench "conduit"   $ whnf drainC $ c C.=$= c C.=$= c C.=$= c
+          , bench "conduit"   $ whnf drainC $ c C..| c C..| c C..| c
           ]
 
       -- IO monad makes a big difference especially for machines
@@ -176,7 +177,7 @@ main =
           [ bench "machines"  $ whnfIO $ drainMIO $ m M.~> m M.~> m M.~> m
           , bench "streaming" $ whnfIO $ drainSIO $ \x -> s x & s & s & s
           , bench "pipes"     $ whnfIO $ drainPIO $ p P.>-> p P.>-> p P.>-> p
-          , bench "conduit"   $ whnfIO $ drainCIO $ c C.=$= c C.=$= c C.=$= c
+          , bench "conduit"   $ whnfIO $ drainCIO $ c C..| c C..| c C..| c
           ]
 
       -- Scaling with same operation in sequence
@@ -204,20 +205,20 @@ main =
       , let f = C.filter (<= value)
         in bgroup "conduit"
           [ bench "1-filter" $ whnf drainC f
-          , bench "2-filters" $ whnf drainC $ f C.=$= f
-          , bench "3-filters" $ whnf drainC $ f C.=$= f C.=$= f
-          , bench "4-filters" $ whnf drainC $ f C.=$= f C.=$= f C.=$= f
+          , bench "2-filters" $ whnf drainC $ f C..| f
+          , bench "3-filters" $ whnf drainC $ f C..| f C..| f
+          , bench "4-filters" $ whnf drainC $ f C..| f C..| f C..| f
           ]
 
       , let m = M.mapping (subtract 1) M.~> M.filtered (<= value)
             s = S.filter (<= value) . S.map (subtract 1)
             p = P.map (subtract 1)  P.>-> P.filter (<= value)
-            c = C.map (subtract 1)  C.=$= C.filter (<= value)
+            c = C.map (subtract 1)  C..| C.filter (<= value)
         in bgroup "summary-alternate"
           [ bench "machines"  $ whnf drainM $ m M.~> m M.~> m M.~> m
           , bench "streaming" $ whnf drainS $ \x -> s x & s & s & s
           , bench "pipes"     $ whnf drainP $ p P.>-> p P.>-> p P.>-> p
-          , bench "conduit"   $ whnf drainC $ c C.=$= c C.=$= c C.=$= c
+          , bench "conduit"   $ whnf drainC $ c C..| c C..| c C..| c
           ]
 
       , let f = M.mapping (subtract 1) M.~> M.filtered (<= value)
@@ -241,12 +242,12 @@ main =
           , bench "3-map-filters" $ whnf drainP $ f P.>-> f P.>-> f
           , bench "4-map-filters" $ whnf drainP $ f P.>-> f P.>-> f P.>-> f
           ]
-      , let f = C.map (subtract 1)  C.=$= C.filter (<= value)
+      , let f = C.map (subtract 1)  C..| C.filter (<= value)
         in bgroup "conduit-alternate"
           [ bench "1-map-filter" $ whnf drainC f
-          , bench "2-map-filters" $ whnf drainC $ f C.=$= f
-          , bench "3-map-filters" $ whnf drainC $ f C.=$= f C.=$= f
-          , bench "4-map-filters" $ whnf drainC $ f C.=$= f C.=$= f C.=$= f
+          , bench "2-map-filters" $ whnf drainC $ f C..| f
+          , bench "3-map-filters" $ whnf drainC $ f C..| f C..| f
+          , bench "4-map-filters" $ whnf drainC $ f C..| f C..| f C..| f
           ]
 
         -- how filtering affects the subsequent composition
@@ -258,7 +259,7 @@ main =
           [ bench "machines"  $ whnf drainM $ m M.~> m M.~> m M.~> m
           , bench "streaming" $ whnf drainS $ \x -> s x & s & s & s
           , bench "pipes"     $ whnf drainP $ p P.>-> p P.>-> p P.>-> p
-          , bench "conduit"   $ whnf drainC $ c C.=$= c C.=$= c C.=$= c
+          , bench "conduit"   $ whnf drainC $ c C..| c C..| c C..| c
           ]
 
       , let m = M.filtered (> value)
@@ -269,7 +270,7 @@ main =
           [ bench "machines"  $ whnfIO $ drainMIO $ m M.~> m M.~> m M.~> m
           , bench "streaming" $ whnfIO $ drainSIO $ \x -> s x & s & s & s
           , bench "pipes"     $ whnfIO $ drainPIO $ p P.>-> p P.>-> p P.>-> p
-          , bench "conduit"   $ whnfIO $ drainCIO $ c C.=$= c C.=$= c C.=$= c
+          , bench "conduit"   $ whnfIO $ drainCIO $ c C..| c C..| c C..| c
           ]
 
       , let f = M.filtered (> value)
@@ -296,9 +297,9 @@ main =
       , let f = C.filter (> value)
         in bgroup "conduit-filter-effect"
           [ bench "filter1" $ whnf drainC f
-          , bench "filter2" $ whnf drainC $ f C.=$= f
-          , bench "filter3" $ whnf drainC $ f C.=$= f C.=$= f
-          , bench "filter4" $ whnf drainC $ f C.=$= f C.=$= f C.=$= f
+          , bench "filter2" $ whnf drainC $ f C..| f
+          , bench "filter3" $ whnf drainC $ f C..| f C..| f
+          , bench "filter4" $ whnf drainC $ f C..| f C..| f C..| f
           ]
       ]
   ]
