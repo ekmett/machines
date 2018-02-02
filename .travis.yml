@@ -80,7 +80,7 @@ install:
   - cabal --version
   - echo "$(${HC} --version) [$(${HC} --print-project-git-commit-id 2> /dev/null || echo '?')]"
   - |
-    if dpkg --compare-versions "${HCVER}" ge "7.10"; then
+    if dpkg --compare-versions "${HCVER}" ge "8.0"; then
       BENCH=${BENCH---enable-benchmarks}
     else
       BENCH=${BENCH---disable-benchmarks}
