@@ -28,6 +28,7 @@ import Data.Pointed
 import Control.Monad.Trans
 import Control.Monad.Identity
 import Data.Profunctor
+import Data.Semigroup
 import qualified Control.Category as C
 import Prelude
 
@@ -132,3 +133,15 @@ embedMealyT sf (a:as) = do
 instance AutomatonM MealyT where
   autoT = autoMealyTImpl
 
+instance (Semigroup b, Monad m) => Semigroup (MealyT m a b) where
+  f <> g = MealyT $ \x -> do
+    (fx, f') <- runMealyT f x
+    (gx, g') <- runMealyT g x
+    return (fx <> gx, f' <> g')
+
+instance (Monoid b, Monad m) => Monoid (MealyT m a b) where
+  mempty = MealyT $ \_ -> return mempty
+  mappend f g = MealyT $ \x -> do
+    (fx, f') <- runMealyT f x
+    (gx, g') <- runMealyT g x
+    return (fx `mappend` gx, f' `mappend` g')
