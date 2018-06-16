@@ -225,3 +225,10 @@ instance MonadReader (NonEmpty a) (Mealy a) where
 
 instance Closed Mealy where
   closed m = cotabulate $ \fs x -> cosieve m (fmap ($x) fs)
+
+instance Semigroup b => Semigroup (Mealy a b) where
+  f <> g = Mealy $ \x -> runMealy f x <> runMealy g x
+
+instance Monoid b => Monoid (Mealy a b) where
+  mempty = Mealy mempty
+  mappend f g = Mealy $ \x -> runMealy f x `mappend` runMealy g x
