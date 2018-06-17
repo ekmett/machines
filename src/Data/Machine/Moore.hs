@@ -34,7 +34,7 @@ import Data.Functor.Rep as Functor
 import Data.Machine.Plan
 import Data.Machine.Type
 import Data.Machine.Process
-import Data.Monoid
+import Data.Semigroup
 import Data.Pointed
 import Data.Profunctor.Closed
 import Data.Profunctor
@@ -48,7 +48,7 @@ data Moore a b = Moore b (a -> Moore a b)
 -- | Accumulate the input as a sequence.
 logMoore :: Monoid m => Moore m m
 logMoore = h mempty where
-  h m = Moore m (\a -> h (m <> a))
+  h m = Moore m (\a -> h (m `mappend` a))
 {-# INLINE logMoore #-}
 
 -- | Construct a Moore machine from a state valuation and transition function
@@ -155,3 +155,10 @@ instance MonadReader [a] (Moore a) where
 
 instance Closed Moore where
   closed m = cotabulate $ \fs x -> cosieve m (fmap ($x) fs)
+
+instance Semigroup b => Semigroup (Moore a b) where
+  Moore x f <> Moore y g = Moore (x <> y) (f <> g)
+
+instance Monoid b => Monoid (Moore a b) where
+  mempty = Moore mempty mempty
+  Moore x f `mappend` Moore y g = Moore (x `mappend` y) (f `mappend` g)
