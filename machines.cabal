@@ -46,7 +46,7 @@ library
     base         >= 4.5   && < 5,
     comonad      >= 3     && < 6,
     containers   >= 0.3   && < 0.6,
-    distributive             < 0.6,
+    distributive             < 0.7,
     pointed      >= 3     && < 6,
     profunctors  >= 3     && < 6,
     semigroupoids >= 5    && < 6,
