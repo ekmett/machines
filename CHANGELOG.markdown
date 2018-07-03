@@ -1,3 +1,10 @@
+next [????.??.??]
+-----------------
+* Add `Semigroup` and `Monoid` instances for `Mealy` and `MealyT`.
+* Mark `runT` and `runT_` as `INLINEABLE`.
+* Increase the scope of the benchmarks. Also include the `streaming` library
+  among the things that are benchmarked.
+
 0.6.3
 -----
 * Add `Semigroup` instance for `Is`
