@@ -4,6 +4,7 @@ next [????.??.??]
 * Mark `runT` and `runT_` as `INLINEABLE`.
 * Increase the scope of the benchmarks. Also include the `streaming` library
   among the things that are benchmarked.
+* Allow building with `containers-0.6`.
 
 0.6.3
 -----
