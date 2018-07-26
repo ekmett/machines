@@ -23,7 +23,7 @@ or delegating that responsibility to a custom driver.
 
 A port of this design to scala is available from runarorama/scala-machines
 
-Runar's slides are also available from https://dl.dropbox.com/u/4588997/Machines.pdf
+Runar's slides are also available from http://web.archive.org/web/20161029161813/https://dl.dropboxusercontent.com/u/4588997/Machines.pdf
 
 Some worked examples are here https://github.com/alanz/machines-play
 
