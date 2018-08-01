@@ -35,6 +35,7 @@ module Data.Machine.Process
   , taking
   , droppingWhile
   , takingWhile
+  , takingJusts
   , buffered
   , flattened
   , fold
@@ -228,6 +229,29 @@ takingWhile p =
            Refl
            stopped
 {-# INLINABLE takingWhile #-}
+
+-- | A 'Process' that passes through elements unwrapped from 'Just' until a
+-- 'Nothing' is found, then stops.
+--
+-- This can be constructed from a plan with
+-- @
+-- takingJusts :: Process (Maybe a) a
+-- takingJusts = repeatedly $ await >>= maybe stop yield
+-- @
+--
+-- Examples:
+--
+-- >>> run $ takingJusts <~ source [Just 1, Just 2, Nothing, Just 3, Just 4]
+-- [1,2]
+--
+takingJusts :: Process (Maybe a) a
+takingJusts = loop
+  where
+    loop = encased
+         $ Await (maybe stopped (\x -> encased (Yield x loop)))
+           Refl
+           stopped
+{-# INLINABLE takingJusts #-}
 
 -- | A 'Process' that drops elements while a predicate holds
 --
