@@ -1,6 +1,6 @@
 name:          machines
 category:      Control, Enumerator
-version:       0.6.4
+version:       0.7.0
 license:       BSD3
 cabal-version: >= 1.10
 license-file:  LICENSE

@@ -26,9 +26,6 @@ module Data.Machine.Mealy
 import Control.Applicative
 import Control.Arrow
 import Control.Category
-import Control.Monad.Fix
-import Control.Monad.Reader.Class
-import Control.Monad.Zip
 import Data.Distributive
 import Data.Functor.Extend
 import Data.Functor.Rep as Functor
@@ -92,16 +89,6 @@ unfoldMealy f = go where
   go s = Mealy $ \a -> case f s a of
     (b, t) -> (b, go t)
 {-# INLINE unfoldMealy #-}
-
--- | slow diagonalization
-instance Monad (Mealy a) where
-  return = pure
-  {-# INLINE return #-}
-  m >>= f = Mealy $ \a -> case runMealy m a of
-    (b, m') -> (fst (runMealy (f b) a), m' >>= f)
-  {-# INLINE (>>=) #-}
-  (>>) = (*>)
-  {-# INLINE (>>) #-}
 
 instance Profunctor Mealy where
   rmap = fmap
@@ -211,17 +198,6 @@ instance Profunctor.Corepresentable Mealy where
   type Corep Mealy = NonEmpty
   cotabulate f0 = Mealy $ \a -> go [a] f0 where
      go as f = (f (NonEmpty.fromList (Prelude.reverse as)), Mealy $ \b -> go (b:as) f)
-
-instance MonadFix (Mealy a) where
-  mfix = mfixRep
-
-instance MonadZip (Mealy a) where
-  mzipWith = mzipWithRep
-  munzip m = (fmap fst m, fmap snd m)
-
-instance MonadReader (NonEmpty a) (Mealy a) where
-  ask = askRep
-  local = localRep
 
 instance Closed Mealy where
   closed m = cotabulate $ \fs x -> cosieve m (fmap ($x) fs)

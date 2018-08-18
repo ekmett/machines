@@ -18,21 +18,20 @@ module Data.Machine.MealyT
   , upgrade
   , scanMealyT
   , scanMealyTM
-  , embedMealyT
   ) where
 
 import Data.Machine
 import Control.Arrow
 import Control.Applicative
-import Data.Pointed
 import Control.Monad.Trans
+import Data.Pointed
 import Control.Monad.Identity
 import Data.Profunctor
 import Data.Semigroup
 import qualified Control.Category as C
 import Prelude
 
--- | 'Mealy' machine, with monadic effects
+-- | 'Mealy' machine, with applicative effects
 newtype MealyT m a b = MealyT { runMealyT :: a -> m (b, MealyT m a b) }
 
 instance Functor m => Functor (MealyT m a) where
@@ -49,22 +48,6 @@ instance Applicative m => Applicative (MealyT m a) where
   pure b = r where r = MealyT (const (pure (b, r))) -- Stolen from Pointed
   MealyT m <*> MealyT n = MealyT $ \a -> (\(mb, mm) (nb, nm) -> (mb nb, mm <*> nm)) <$> m a <*> n a
 
-instance Monad m => Monad (MealyT m a) where
-#if !MIN_VERSION_base(4,8,0)
-  -- pre-AMP
-  {-# INLINE return #-}
-  return b = r where r = MealyT (const (return (b, r))) -- Stolen from Pointed
-#endif
-
-  MealyT g >>= f = MealyT $ \a ->
-    do (b, MealyT _h) <- g a
-       runMealyT (f b) a
-
--- | Profunctor Example:
---
--- >>> embedMealyT (dimap (+21) (+1) (arr (+1))) [1,2,3 :: Int]
--- [24,25,26]
---
 instance Functor m => Profunctor (MealyT m) where
   rmap = fmap
   {-# INLINE rmap #-}
@@ -98,13 +81,11 @@ arrPure = arr
 arrM :: Functor m => (a -> m b) -> MealyT m a b
 arrM f = r where r = MealyT $ \a -> fmap (,r) (f a)
 
-upgrade :: Monad m => Mealy a b -> MealyT m a b
-upgrade (Mealy f) = MealyT $ \a ->
-  do let (r, g) = f a
-     return (r, upgrade g)
+upgrade :: Applicative m => Mealy a b -> MealyT m a b
+upgrade (Mealy f) = MealyT $ \a -> let (r, g) = f a in pure (r, upgrade g)
 
-scanMealyT :: Monad m => (a -> b -> a) -> a -> MealyT m b a
-scanMealyT f a = MealyT (\b -> return (a, scanMealyT f (f a b)))
+scanMealyT :: Applicative m => (a -> b -> a) -> a -> MealyT m b a
+scanMealyT f a = MealyT (\b -> pure (a, scanMealyT f (f a b)))
 
 scanMealyTM :: Functor m => (a -> b -> m a) -> a -> MealyT m b a
 scanMealyTM f a = MealyT $ \b -> (\x -> (a, scanMealyTM f x)) <$> f a b
@@ -118,30 +99,13 @@ autoMealyTImpl = construct . go
     yield b
     go m
 
--- | embedMealyT Example:
---
--- >>> embedMealyT (arr (+1)) [1,2,3]
--- [2,3,4]
---
-embedMealyT :: Monad m => MealyT m a b -> [a] -> m [b]
-embedMealyT _  []     = return []
-embedMealyT sf (a:as) = do
-  (b, sf') <- runMealyT sf a
-  bs       <- embedMealyT sf' as
-  return (b:bs)
-
 instance AutomatonM MealyT where
   autoT = autoMealyTImpl
 
-instance (Semigroup b, Monad m) => Semigroup (MealyT m a b) where
-  f <> g = MealyT $ \x -> do
-    (fx, f') <- runMealyT f x
-    (gx, g') <- runMealyT g x
-    return (fx <> gx, f' <> g')
+instance (Semigroup b, Applicative m) => Semigroup (MealyT m a b) where
+  f <> g = MealyT $ \x ->
+    (\(fx, f') (gx, g') -> (fx <> gx, f' <> g')) <$> runMealyT f x <*> runMealyT g x
 
-instance (Monoid b, Monad m) => Monoid (MealyT m a b) where
-  mempty = MealyT $ \_ -> return mempty
-  mappend f g = MealyT $ \x -> do
-    (fx, f') <- runMealyT f x
-    (gx, g') <- runMealyT g x
-    return (fx `mappend` gx, f' `mappend` g')
+instance (Semigroup b, Monoid b, Applicative m) => Monoid (MealyT m a b) where
+  mempty = MealyT $ \_ -> pure mempty
+  mappend = (<>)
