@@ -32,7 +32,7 @@ source-repository head
 library
   build-depends:
     base         == 4.*,
-    machines     == 0.6.*,
+    machines     == 0.7.*,
     mtl          >= 2 && < 2.3
 
   exposed-modules:
