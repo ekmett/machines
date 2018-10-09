@@ -5,6 +5,10 @@
 #ifndef MIN_VERSION_profunctors
 #define MIN_VERSION_profunctors(x,y,z) 0
 #endif
+
+#ifndef MIN_VERSION_base
+#define MIN_VERSION_base(x,y,z) 0
+#endif
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Mealy
@@ -205,6 +209,10 @@ instance Closed Mealy where
 instance Semigroup b => Semigroup (Mealy a b) where
   f <> g = Mealy $ \x -> runMealy f x <> runMealy g x
 
+#if MIN_VERSION_base(4,11,0)
 instance Monoid b => Monoid (Mealy a b) where
+#else
+instance (Semigroup b, Monoid b) => Monoid (Mealy a b) where
+#endif
   mempty = Mealy mempty
-  mappend f g = Mealy $ \x -> runMealy f x `mappend` runMealy g x
+  mappend = (<>)

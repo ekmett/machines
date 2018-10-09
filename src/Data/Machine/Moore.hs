@@ -5,6 +5,10 @@
 #ifndef MIN_VERSION_profunctors
 #define MIN_VERSION_profunctors(x,y,z) 0
 #endif
+
+#ifndef MIN_VERSION_base
+#define MIN_VERSION_base(x,y,z) 0
+#endif
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Moore
@@ -159,6 +163,10 @@ instance Closed Moore where
 instance Semigroup b => Semigroup (Moore a b) where
   Moore x f <> Moore y g = Moore (x <> y) (f <> g)
 
-instance Monoid b => Monoid (Moore a b) where
+#if MIN_VERSION_base(4,11,0)
+instance (Monoid b) => Monoid (Moore a b) where
+#else
+instance (Semigroup b, Monoid b) => Monoid (Moore a b) where
+#endif
   mempty = Moore mempty mempty
-  Moore x f `mappend` Moore y g = Moore (x `mappend` y) (f `mappend` g)
+  mappend = (<>)
