@@ -207,4 +207,4 @@ instance Semigroup b => Semigroup (Mealy a b) where
 
 instance Monoid b => Monoid (Mealy a b) where
   mempty = Mealy mempty
-  mappend f g = Mealy $ \x -> runMealy f x `mappend` runMealy g x
+  mappend = (<>)

@@ -161,4 +161,4 @@ instance Semigroup b => Semigroup (Moore a b) where
 
 instance Monoid b => Monoid (Moore a b) where
   mempty = Moore mempty mempty
-  Moore x f `mappend` Moore y g = Moore (x `mappend` y) (f `mappend` g)
+  mappend = (<>)
