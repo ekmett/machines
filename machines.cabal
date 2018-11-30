@@ -71,6 +71,7 @@ library
     Data.Machine.Mealy
     Data.Machine.MealyT
     Data.Machine.Moore
+    Data.Machine.MooreT
     Data.Machine.Process
     Data.Machine.Plan
     Data.Machine.Runner

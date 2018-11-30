@@ -3,7 +3,7 @@
 
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Data.Machine.Mealy
+-- Module      :  Data.Machine.MealyT
 -- License     :  BSD-style (see the file LICENSE)
 --
 -- <http://en.wikipedia.org/wiki/Mealy_machine>
