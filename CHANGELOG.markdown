@@ -1,5 +1,10 @@
-next [????.??.??]
------------------
+0.7 [????.??.??]
+----------------
+* Remove the `Monad` instances for `Mealy` and `MealyT`, as they were
+  inconsistent with the `Applicative` instances.
+* Add a `Data.Machine.Group.General` module.
+* Add a `takingJusts` function to `Data.Machine.Process`.
+* Add `Semigroup` and `Monoid` instances for `Moore`.
 * Support building with `base-4.13` (GHC 8.8).
 
 0.6.4 [2018.07.03]
