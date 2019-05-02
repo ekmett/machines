@@ -118,7 +118,9 @@ instance Monad (PlanT k o m) where
   {-# INLINE (>>=) #-}
   (>>) = (*>)
   {-# INLINE (>>) #-}
+#if !(MIN_VERSION_base(4,13,0))
   fail = Fail.fail
+#endif
 
 instance Fail.MonadFail (PlanT k o m) where
   fail _ = PlanT (\_ _ _ kf -> kf)

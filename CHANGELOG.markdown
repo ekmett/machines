@@ -1,3 +1,7 @@
+next [????.??.??]
+-----------------
+* Support building with `base-4.13` (GHC 8.8).
+
 0.6.4 [2018.07.03]
 ------------------
 * Add `Semigroup` and `Monoid` instances for `Mealy` and `MealyT`.
