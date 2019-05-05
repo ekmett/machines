@@ -161,4 +161,6 @@ instance Semigroup b => Semigroup (Moore a b) where
 
 instance Monoid b => Monoid (Moore a b) where
   mempty = Moore mempty mempty
+#if !(MIN_VERSION_base(4,11,0))
   Moore x f `mappend` Moore y g = Moore (x `mappend` y) (f `mappend` g)
+#endif

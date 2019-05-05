@@ -207,4 +207,6 @@ instance Semigroup b => Semigroup (Mealy a b) where
 
 instance Monoid b => Monoid (Mealy a b) where
   mempty = Mealy mempty
+#if !(MIN_VERSION_base(4,11,0))
   mappend f g = Mealy $ \x -> runMealy f x `mappend` runMealy g x
+#endif
