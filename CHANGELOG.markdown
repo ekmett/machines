@@ -1,4 +1,4 @@
-0.7 [????.??.??]
+0.7 [2019.05.10]
 ----------------
 * Remove the `Monad` instances for `Mealy` and `MealyT`, as they were
   inconsistent with the `Applicative` instances.
