@@ -113,6 +113,7 @@ instance AutomatonM Kleisli where
 -- | The trivial 'Process' that simply repeats each input it receives.
 --
 -- This can be constructed from a plan with
+--
 -- @
 -- echo :: Process a a
 -- echo = repeatedly $ do
@@ -139,6 +140,7 @@ prepended = before echo . traverse_ yield
 -- | A 'Process' that only passes through inputs that match a predicate.
 --
 -- This can be constructed from a plan with
+--
 -- @
 -- filtered :: (a -> Bool) -> Process a a
 -- filtered p = repeatedly $ do
@@ -164,6 +166,7 @@ filtered p =
 -- | A 'Process' that drops the first @n@, then repeats the rest.
 --
 -- This can be constructed from a plan with
+--
 -- @
 -- dropping n = before echo $ replicateM_ n await
 -- @
@@ -187,6 +190,7 @@ dropping =
 -- | A 'Process' that passes through the first @n@ elements from its input then stops
 --
 -- This can be constructed from a plan with
+--
 -- @
 -- taking n = construct . replicateM_ n $ await >>= yield
 -- @
@@ -210,6 +214,7 @@ taking =
 -- | A 'Process' that passes through elements until a predicate ceases to hold, then stops
 --
 -- This can be constructed from a plan with
+--
 -- @
 -- takingWhile :: (a -> Bool) -> Process a a
 -- takingWhile p = repeatedly $ await >>= \v -> if p v then yield v else stop
@@ -234,6 +239,7 @@ takingWhile p =
 -- 'Nothing' is found, then stops.
 --
 -- This can be constructed from a plan with
+--
 -- @
 -- takingJusts :: Process (Maybe a) a
 -- takingJusts = repeatedly $ await >>= maybe stop yield
@@ -256,6 +262,7 @@ takingJusts = loop
 -- | A 'Process' that drops elements while a predicate holds
 --
 -- This can be constructed from a plan with
+--
 -- @
 -- droppingWhile :: (a -> Bool) -> Process a a
 -- droppingWhile p = before echo loop where
@@ -282,6 +289,7 @@ droppingWhile p =
 -- Avoids returning empty lists and deals with the truncation of the final group.
 --
 -- An approximation of this can be constructed from a plan with
+--
 -- @
 -- buffered :: Int -> Process a [a]
 -- buffered = repeatedly . go [] where
@@ -401,12 +409,14 @@ process f (MachineT m) = MachineT (liftM f' m) where
 -- Like 'fold', but yielding intermediate values.
 --
 -- It may be useful to consider this alternative signature
+--
 -- @
 -- 'scan' :: (a -> b -> a) -> a -> Process b a
 -- @
 --
 -- For stateful 'scan' use 'auto' with "Data.Machine.Mealy" machine.
 -- This can be constructed from a plan with
+--
 -- @
 -- scan :: Category k => (a -> b -> a) -> a -> Machine (k b) a
 -- scan func seed = construct $ go seed where
@@ -439,6 +449,7 @@ scan func seed =
 -- 'scan1' is a variant of 'scan' that has no starting value argument
 --
 -- This can be constructed from a plan with
+--
 -- @
 -- scan1 :: Category k => (a -> a -> a) -> Machine (k a) a
 -- scan1 func = construct $ await >>= go where
@@ -483,11 +494,13 @@ scanMap f = scan (\b a -> mappend b (f a)) mempty
 -- Like 'scan', but only yielding the final value.
 --
 -- It may be useful to consider this alternative signature
+--
 -- @
 -- 'fold' :: (a -> b -> a) -> a -> Process b a
 -- @
 --
 -- This can be constructed from a plan with
+--
 -- @
 -- fold :: Category k => (a -> b -> a) -> a -> Machine (k b) a
 -- fold func seed = construct $ go seed where
@@ -517,6 +530,7 @@ fold func =
 -- 'fold1' is a variant of 'fold' that has no starting value argument
 --
 -- This can be constructed from a plan with
+--
 -- @
 -- fold1 :: Category k => (a -> a -> a) -> Machine (k a) a
 -- fold1 func = construct $ await >>= go where
@@ -543,6 +557,7 @@ fold1 func =
 -- individually.
 --
 -- This can be constructed from a plan with
+--
 -- @
 -- asParts :: Foldable f => Process (f a) a
 -- asParts = repeatedly $ await >>= traverse_ yield
@@ -590,6 +605,7 @@ sinkPart_ p = go
 -- | Apply a monadic function to each element of a 'ProcessT'.
 --
 -- This can be constructed from a plan with
+--
 -- @
 -- autoM :: Monad m => (a -> m b) -> ProcessT m a b
 -- autoM :: (Category k, Monad m) => (a -> m b) -> MachineT m (k a) b
@@ -615,6 +631,7 @@ autoM f =
 -- Skip all but the final element of the input
 --
 -- This can be constructed from a plan with
+--
 -- @
 -- 'final' :: 'Process' a a
 -- final :: Category k => Machine (k a) a
@@ -643,6 +660,7 @@ final =
 -- If the input is empty, the default value is emitted
 --
 -- This can be constructed from a plan with
+--
 -- @
 -- 'finalOr' :: a -> 'Process' a a
 -- finalOr :: Category k => a -> Machine (k a) a
@@ -696,6 +714,7 @@ smallest = fold1 min
 -- Convert a stream of actions to a stream of values
 --
 -- This can be constructed from a plan with
+--
 -- @
 -- sequencing :: Monad m => (a -> m b) -> ProcessT m a b
 -- sequencing :: (Category k, Monad m) => MachineT m (k (m a)) a
@@ -721,6 +740,7 @@ sequencing = autoM id
 -- Apply a function to all values coming from the input
 --
 -- This can be constructed from a plan with
+--
 -- @
 -- mapping :: Category k => (a -> b) -> Machine (k a) b
 -- mapping f = repeatedly $ await >>= yield . f
