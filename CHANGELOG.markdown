@@ -1,3 +1,9 @@
+0.7.1 [2020.??.??]
+----------------
+* Add `Data.Machine.Type.capture` to capture the output on a `MachineT` in a `PlanT`.
+* Add `rest` to `Data.Machine.Process`.
+* Add `union` to `Data.Machine.Tee`.
+
 0.7 [2019.05.10]
 ----------------
 * Remove the `Monad` instances for `Mealy` and `MealyT`, as they were

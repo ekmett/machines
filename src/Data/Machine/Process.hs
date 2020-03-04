@@ -37,6 +37,7 @@ module Data.Machine.Process
   , takingWhile
   , takingJusts
   , buffered
+  , rest
   , flattened
   , fold
   , fold1
@@ -339,6 +340,23 @@ buffered n =
     finish dl = encased
               $ Yield (dl []) stopped
 {-# INLINABLE buffered #-}
+
+-- | The rest of the stream as a list.
+--
+-- Examples:
+--
+-- >>> run $ rest <~ source [1..6]
+-- [[1,2,3,4,5,6]]
+--
+-- >>> run $ rest <~ source []
+-- []
+--
+rest :: Process a [a]
+rest =
+    encased $ Await (\n -> go (\e -> n:e)) Refl stopped
+  where
+    go :: ([a] -> [a]) -> Process a [a]
+    go dl = encased $ Await (\n -> go (\e -> dl (n:e))) Refl (encased $ Yield (dl []) stopped)
 
 -- | Build a new 'Machine' by adding a 'Process' to the output of an old 'Machine'
 --
