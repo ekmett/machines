@@ -26,15 +26,21 @@ module Data.Machine.MooreT
   , secondM
   ) where
 
-import Control.Applicative
 import Control.Monad.Trans (lift)
 import Data.Distributive   (Distributive(..), cotraverse)
 import Data.Machine
 import Data.Machine.MealyT (MealyT(runMealyT))
-import Data.Monoid         (Monoid(..))
 import Data.Pointed        (Pointed(..))
 import Data.Profunctor     (Costrong(..), Profunctor(..))
+
+#if !(MIN_VERSION_base(4,8,0))
+import Control.Applicative
+import Data.Monoid         (Monoid(..))
+#endif
+
+#if !(MIN_VERSION_base(4,11,0))
 import Data.Semigroup      (Semigroup(..))
+#endif
 
 -- | 'Moore' machine, with applicative effects
 newtype MooreT m a b = MooreT { runMooreT :: m (b, a -> MooreT m a b) }
@@ -129,5 +135,7 @@ instance (Applicative m, Semigroup b) => Semigroup (MooreT m a b) where
 instance (Applicative m, Monoid b) => Monoid (MooreT m a b) where
   mempty = pure mempty
   {-# INLINE mempty #-}
+#if !(MIN_VERSION_base(4,11,0))
   mappend a b = mappend <$> a <*> b
   {-# INLINE mappend #-}
+#endif
