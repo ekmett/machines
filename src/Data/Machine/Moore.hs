@@ -139,8 +139,7 @@ instance Costrong Moore where
 
 instance Profunctor.Corepresentable Moore where
   type Corep Moore = []
-  cotabulate f0 = go (f0 . reverse) where
-    go f = Moore (f []) $ \a -> go (f.(a:))
+  cotabulate f = Moore (f []) $ \a -> cotabulate (f.(a:))
 
 instance MonadFix (Moore a) where
   mfix = mfixRep
