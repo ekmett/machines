@@ -59,7 +59,7 @@ unfoldMoore f = go where
 {-# INLINE unfoldMoore #-}
 
 instance Automaton Moore where
-  auto = construct . go where
+  auto x = construct $ go x where
     go (Moore b f) = do
       yield b
       await >>= go . f

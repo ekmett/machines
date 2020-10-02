@@ -135,7 +135,7 @@ echo =
 
 -- | A 'Process' that prepends the elements of a 'Foldable' onto its input, then repeats its input from there.
 prepended :: Foldable f => f a -> Process a a
-prepended = before echo . traverse_ yield
+prepended f = before echo $ traverse_ (\x -> yield x) f
 
 -- | A 'Process' that only passes through inputs that match a predicate.
 --
@@ -177,8 +177,8 @@ filtered p =
 -- [4,5]
 --
 dropping :: Int -> Process a a
-dropping =
-    loop
+dropping i =
+    loop i
   where
     loop cnt
       | cnt <= 0
@@ -201,8 +201,8 @@ dropping =
 -- [1,2,3]
 --
 taking :: Int -> Process a a
-taking =
-    loop
+taking i =
+    loop i
   where
     loop cnt
       | cnt <= 0
@@ -518,12 +518,12 @@ scanMap f = scan (\b a -> mappend b (f a)) mempty
 -- [5]
 --
 fold :: Category k => (a -> b -> a) -> a -> Machine (k b) a
-fold func =
+fold func x =
   let step t = t `seq` encased
              $ Await (step . func t)
                      id
                      (encased $ Yield t stopped)
-  in  step
+  in  step x
 {-# INLINABLE fold #-}
 
 -- |
@@ -678,10 +678,10 @@ final =
 -- [-1]
 --
 finalOr :: Category k => a -> Machine (k a) a
-finalOr =
+finalOr y =
   let step x = encased (Await step id (emit x))
       emit x = encased (Yield x stopped)
-  in step
+  in step y
 {-# INLINABLE finalOr #-}
 
 -- |

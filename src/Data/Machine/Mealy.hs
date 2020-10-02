@@ -105,7 +105,7 @@ instance Profunctor Mealy where
 #endif
 
 instance Automaton Mealy where
-  auto = construct . go where
+  auto x = construct $ go x where
     go (Mealy f) = await >>= \a -> case f a of
       (b, m) -> do
          yield b

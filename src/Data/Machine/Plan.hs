@@ -176,7 +176,7 @@ yield o = PlanT (\kp ke _ _ -> ke o (kp ()))
 
 -- | Like yield, except stops if there is no value to yield.
 maybeYield :: Maybe o -> Plan k o ()
-maybeYield = maybe stop yield
+maybeYield m = maybe stop (\x -> yield x) m
 
 -- | Wait for input.
 --
@@ -200,4 +200,7 @@ stop = empty
 
 -- | Run a monadic action repeatedly yielding its results, until it returns Nothing.
 exhaust :: Monad m => m (Maybe a) -> PlanT k a m ()
-exhaust f = do (lift f >>= maybeYield); exhaust f
+exhaust f = do
+  x <- lift f
+  maybeYield x
+  exhaust f

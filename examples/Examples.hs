@@ -31,11 +31,15 @@ readLines f = withFile f ReadMode slurpHandle
 
 -- | bad slurping machine
 crashes :: Handle -> MachineT IO k String
-crashes h = repeatedly $ lift (hGetLine h) >>= yield
+crashes h = repeatedly $ do
+  x <- lift (hGetLine h)
+  yield x
 
 -- | here is a plan that yields all the lines at once.
 slurpHandlePlan :: Handle -> PlanT k [String] IO ()
-slurpHandlePlan h = lift (slurpHandle h) >>= yield
+slurpHandlePlan h = do
+  x <- lift (slurpHandle h)
+  yield x
 
 {-
  - but we want a plan that will yield one line at a time
@@ -68,7 +72,7 @@ lineCharCount path = runHead src where
 
 -- | A Process that takes in a String and outputs all the words in that String
 wordsProc :: Process String String
-wordsProc = repeatedly $ do { s <- await; mapM_ yield (words s) }
+wordsProc = repeatedly $ do { s <- await; mapM_ (\x -> yield x) (words s) }
 
 -- | A Plan to print all input.
 printPlan :: PlanT (Is String) () IO ()

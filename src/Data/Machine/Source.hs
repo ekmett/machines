@@ -95,7 +95,7 @@ cycled xs = foldr go (cycled xs) xs
 -- [1,2]
 --
 source :: Foldable f => f b -> Source b
-source = foldr go stopped
+source f = foldr go stopped f
   where
     go x m = encased $ Yield x m
 

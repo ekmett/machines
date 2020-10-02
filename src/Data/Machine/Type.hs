@@ -109,7 +109,7 @@ instance Monad m => Functor (MachineT m k) where
     f' Stop            = Stop
 
 instance Monad m => Pointed (MachineT m k) where
-  point = repeatedly . yield
+  point x = repeatedly $ yield x
 
 instance Monad m => Semigroup (MachineT m k o) where
   a <> b = stepMachine a $ \step -> case step of

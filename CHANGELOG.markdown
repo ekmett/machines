@@ -1,3 +1,7 @@
+next [????.??.??]
+-----------------
+* Allow building with GHC 9.0.
+
 0.7 [2019.05.10]
 ----------------
 * Remove the `Monad` instances for `Mealy` and `MealyT`, as they were
