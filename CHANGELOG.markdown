@@ -1,5 +1,5 @@
-next [????.??.??]
------------------
+0.7.1 [2020.10.02]
+------------------
 * Allow building with GHC 9.0.
 * Add a `Data.Machine.MooreT` module.
 * Tweak the `Corepresentable Moore` instance's implementation of `cotabulate`
