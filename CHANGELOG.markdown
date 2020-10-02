@@ -1,6 +1,10 @@
 next [????.??.??]
 -----------------
 * Allow building with GHC 9.0.
+* Add a `Data.Machine.MooreT` module.
+* Tweak the `Corepresentable Moore` instance's implementation of `cotabulate`
+  to ensure that `index . tabulate ≡ id` (note that for `Moore`,
+  `tabulate = cotabulate`).
 
 0.7 [2019.05.10]
 ----------------
