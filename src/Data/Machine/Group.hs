@@ -9,6 +9,9 @@ module Data.Machine.Group
 import Data.Machine
 import qualified Data.Machine.Group.General as Group
 
+-- $setup
+-- >>> import Data.Machine
+
 -- | Using a function to signal group changes, apply a machine independently over each group.
 groupingOn :: Monad m => (a -> a -> Bool) -> ProcessT m a b -> ProcessT m a b
 groupingOn = Group.groupingOn_

@@ -43,7 +43,7 @@ import Data.Sequence as Seq
 import Prelude hiding ((.),id)
 
 -- $setup
--- >>> import Data.Machine.Source
+-- >>> import Data.Machine
 
 -- | 'Mealy' machines
 --
