@@ -34,6 +34,9 @@ import Data.Machine.Type
 import Data.Machine.Process
 import Prelude (Enum, Int, Maybe, Monad, ($), (>>=), return)
 
+-- $setup
+-- >>> import Data.Machine
+
 -------------------------------------------------------------------------------
 -- Source
 -------------------------------------------------------------------------------

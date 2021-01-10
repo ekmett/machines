@@ -76,7 +76,8 @@ import Prelude
 #endif
 
 -- $setup
--- >>> import Data.Machine.Source
+-- >>> import Data.Machine
+-- >>> import Data.Monoid (Sum (..))
 
 infixr 9 <~
 infixl 9 ~>

@@ -28,14 +28,11 @@ module Data.Machine.Group.General
 import           Control.Monad (guard)
 import           Data.Machine
 
-#if __GLASGOW_HASKELL__ < 710
 -- $setup
 -- >>> import Control.Monad.Trans.Reader (ask, runReader)
+-- >>> import Control.Monad (guard)
 -- >>> import Control.Applicative ((<$))
-#else
--- $setup
--- >>> import Control.Monad.Trans.Reader (ask, runReader)
-#endif
+-- >>> import Data.Machine
 
 -- A strict tuple type.
 data Strict2 a b = Strict2 !a !b
