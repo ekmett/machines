@@ -31,6 +31,9 @@ import Data.Machine.Type
 import Data.Machine.Source
 import Prelude hiding ((.), id, zipWith)
 
+-- $setup
+-- >>> import Data.Machine
+
 -------------------------------------------------------------------------------
 -- Tees
 -------------------------------------------------------------------------------

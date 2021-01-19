@@ -1,7 +1,7 @@
 machines
 ========
 
-[![Hackage](https://img.shields.io/hackage/v/machines.svg)](https://hackage.haskell.org/package/machines) [![Build Status](https://secure.travis-ci.org/ekmett/machines.png?branch=master)](http://travis-ci.org/ekmett/machines)
+[![Hackage](https://img.shields.io/hackage/v/machines.svg)](https://hackage.haskell.org/package/machines) [![Build Status](https://github.com/ekmett/machines/workflows/Haskell-CI/badge.svg)](https://github.com/ekmett/machines/actions?query=workflow%3AHaskell-CI)
 
 *Ceci n'est pas une pipe*
 

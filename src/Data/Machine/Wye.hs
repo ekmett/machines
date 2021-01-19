@@ -102,7 +102,7 @@ capY s t = process (capped Left) (addY s t)
 
 -- | Tie off both inputs of a wye by connecting them to known sources.
 capWye :: Monad m => SourceT m a -> SourceT m b -> WyeT m a b c -> SourceT m c
-capWye a b = plug . wye a b
+capWye a b w = plug $ wye a b w
 {-# INLINE capWye #-}
 
 -- | Natural transformation used by 'capX' and 'capY'

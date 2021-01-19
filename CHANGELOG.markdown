@@ -1,8 +1,20 @@
-0.7.1 [2020.??.??]
-----------------
+next [yyyy.mm.dd]
+-----------------
+* The build-type has been changed from `Custom` to `Simple`.
+  To achieve this, the `doctests` test suite has been removed in favor of using
+  [`cabal-docspec`](https://github.com/phadej/cabal-extras/tree/master/cabal-docspec)
+  to run the doctests.
 * Add `Data.Machine.Type.capture` to capture the output on a `MachineT` in a `PlanT`.
 * Add `rest` to `Data.Machine.Process`.
 * Add `union` to `Data.Machine.Tee`.
+
+0.7.1 [2020.10.02]
+------------------
+* Allow building with GHC 9.0.
+* Add a `Data.Machine.MooreT` module.
+* Tweak the `Corepresentable Moore` instance's implementation of `cotabulate`
+  to ensure that `index . tabulate ≡ id` (note that for `Moore`,
+  `tabulate = cotabulate`).
 
 0.7 [2019.05.10]
 ----------------

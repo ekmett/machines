@@ -43,7 +43,7 @@ import Data.Sequence as Seq
 import Prelude hiding ((.),id)
 
 -- $setup
--- >>> import Data.Machine.Source
+-- >>> import Data.Machine
 
 -- | 'Mealy' machines
 --
@@ -105,7 +105,7 @@ instance Profunctor Mealy where
 #endif
 
 instance Automaton Mealy where
-  auto = construct . go where
+  auto x = construct $ go x where
     go (Mealy f) = await >>= \a -> case f a of
       (b, m) -> do
          yield b
