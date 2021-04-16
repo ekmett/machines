@@ -200,7 +200,7 @@ instance Profunctor.Corepresentable Mealy where
      go as f = (f (NonEmpty.fromList (Prelude.reverse as)), Mealy $ \b -> go (b:as) f)
 
 instance Closed Mealy where
-  closed m = cotabulate $ \fs x -> cosieve m (fmap ($x) fs)
+  closed m = cotabulate $ \fs x -> cosieve m (fmap ($ x) fs)
 
 instance Semigroup b => Semigroup (Mealy a b) where
   f <> g = Mealy $ \x -> runMealy f x <> runMealy g x

@@ -153,7 +153,7 @@ instance MonadReader [a] (Moore a) where
   local = localRep
 
 instance Closed Moore where
-  closed m = cotabulate $ \fs x -> cosieve m (fmap ($x) fs)
+  closed m = cotabulate $ \fs x -> cosieve m (fmap ($ x) fs)
 
 instance Semigroup b => Semigroup (Moore a b) where
   Moore x f <> Moore y g = Moore (x <> y) (f <> g)
