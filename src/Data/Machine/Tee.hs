@@ -21,6 +21,7 @@ module Data.Machine.Tee
   , zipWithT
   , zipWith
   , zipping
+  , union
   ) where
 
 import Data.Machine.Is
@@ -149,3 +150,27 @@ zipWith f = repeatedly $ do
 zipping :: Tee a b (a, b)
 zipping = zipWith (,)
 {-# INLINE zipping #-}
+
+-- | Merges two ordered inputs into their unique, ordered result set.
+-- >>> run $ tee (source [1, 2, 3, 5, 9]) (source [1, 3, 4, 5, 6, 7, 8, 10, 11, 12]) union
+-- [1,2,3,4,5,6,7,8,9,10,11,12]
+--
+-- >>> run $ tee (source [1, 3, 4, 5, 6, 7, 8, 10, 11, 12]) (source [1, 2, 3, 5, 9]) union
+-- [1,2,3,4,5,6,7,8,9,10,11,12]
+--
+-- >>> run $ tee (source [1, 2, 3, 4, 5]) (source [1, 2, 3, 4, 5]) union
+-- [1,2,3,4,5]
+union :: Ord a => Tee a a a
+union =
+    haveNeither
+  where
+    haveNeither = encased $ Await haveLeft L allR
+    haveLeft l = encased $ Await (haveBoth l) R (encased $ Yield l allL)
+    haveRight r = encased $ Await (`haveBoth` r) L (encased $ Yield r allR)
+    haveBoth l r =
+      case l `compare` r of
+        EQ -> encased $ Yield l haveNeither
+        LT -> encased $ Yield l (haveRight r)
+        GT -> encased $ Yield r (haveLeft l)
+    allL = repeatedly $ (awaits L >>= yield)
+    allR = repeatedly $ (awaits R >>= yield)

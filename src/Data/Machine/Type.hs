@@ -1,6 +1,8 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Type
@@ -34,6 +36,7 @@ module Data.Machine.Type
 
   -- ** Deconstructing machines back into plans
   , deconstruct
+  , capture
   , tagDone
   , finishWith
 
@@ -55,6 +58,7 @@ module Data.Machine.Type
 import Control.Applicative
 import Control.Category
 import Control.Monad (liftM)
+import Control.Monad.Trans
 import Data.Foldable
 import Data.Functor.Identity
 import Data.Machine.Plan
@@ -311,6 +315,18 @@ deconstruct m = PlanT $ \r y a f ->
        Yield (Left o) _ -> r o
        Yield (Right o) k -> y o (aux k)
        Await g fk h -> a (aux . g) fk (aux h)
+
+-- | Convert a 'Machine' back into a 'Plan' by capturing the output of the 'Machine' into 'Plan'.
+--   This allows the use of a 'Machine' pipeline inside a 'Plan' stage.
+capture :: forall m k o . Monad m => MachineT m k o -> forall v. PlanT k v m [o]
+capture = go []
+  where
+    go :: [o] -> MachineT m k o -> PlanT k v m [o]
+    go c m =
+      (lift $ runMachineT m) >>= \case
+        Stop -> pure $ reverse c
+        Yield o r -> go (o:c) r
+        Await t k f -> (awaits k >>= (go c . t)) <|> go c f
 
 -- | Use a predicate to mark a yielded value as the terminal value of
 -- this 'Machine'. This is useful in combination with 'deconstruct' to

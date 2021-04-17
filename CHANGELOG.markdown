@@ -4,6 +4,9 @@
   To achieve this, the `doctests` test suite has been removed in favor of using
   [`cabal-docspec`](https://github.com/phadej/cabal-extras/tree/master/cabal-docspec)
   to run the doctests.
+* Add `Data.Machine.Type.capture` to capture the output on a `MachineT` in a `PlanT`.
+* Add `rest` to `Data.Machine.Process`.
+* Add `union` to `Data.Machine.Tee`.
 
 0.7.1 [2020.10.02]
 ------------------
