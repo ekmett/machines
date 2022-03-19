@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, TypeFamilies #-}
+{-# LANGUAGE GADTs, TypeFamilies, TypeOperators #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Is

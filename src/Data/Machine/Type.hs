@@ -1,5 +1,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE FlexibleInstances #-}
 -----------------------------------------------------------------------------
 -- |
