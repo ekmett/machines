@@ -1,3 +1,7 @@
+next [????.??.??]
+-----------------
+* Allow building with `mtl-2.3.*` and `transformers-0.6.*`.
+
 0.7.2 [2021.02.17]
 ------------------
 * The build-type has been changed from `Custom` to `Simple`.
