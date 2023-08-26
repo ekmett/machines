@@ -58,12 +58,16 @@ getFileLines path proc = src ~> proc where
 
 -- | lineCount counts the number of lines in a file
 lineCount :: FilePath -> IO Int
-lineCount path = head <$> (runT src) where
+lineCount path = runHead src where
   src = getFileLines path (fold (\a _ -> a + 1) 0)
 
 -- | run a machine and just take the first value out of it.
 runHead :: (Functor f, Monad f) => MachineT f k b -> f b
-runHead src = head <$> runT src
+runHead src = do
+  vs <- runT src
+  case vs of
+    v:_ -> return v
+    []  -> error "No values from machine"
 
 -- | lineCharCount counts the number of lines, and characters in a file
 lineCharCount :: FilePath -> IO (Int, Int)
