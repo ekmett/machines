@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE TupleSections #-}
 
 -----------------------------------------------------------------------------
@@ -54,11 +53,9 @@ instance Functor m => Profunctor (MealyT m) where
   lmap f = go where
     go (MealyT m) = MealyT $ \a -> fmap (\(b,n) -> (b, go n)) (m (f a))
   {-# INLINE lmap #-}
-#if MIN_VERSION_profunctors(3,1,1)
   dimap f g = go where
     go (MealyT m) = MealyT $ \a -> fmap (\(b,n) -> (g b, go n)) (m (f a))
   {-# INLINE dimap #-}
-#endif
 
 instance Monad m => C.Category (MealyT m) where
   {-# INLINE id #-}

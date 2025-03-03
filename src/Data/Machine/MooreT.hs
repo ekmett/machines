@@ -1,9 +1,6 @@
 {-# LANGUAGE CPP        #-}
 {-# LANGUAGE RankNTypes #-}
 
-#ifndef MIN_VERSION_profunctors
-#define MIN_VERSION_profunctors(x,y,z) 0
-#endif
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.MooreT
@@ -32,11 +29,6 @@ import Data.Machine
 import Data.Machine.MealyT (MealyT(runMealyT))
 import Data.Pointed        (Pointed(..))
 import Data.Profunctor     (Costrong(..), Profunctor(..))
-
-#if !(MIN_VERSION_base(4,8,0))
-import Control.Applicative
-import Data.Monoid         (Monoid(..))
-#endif
 
 #if !(MIN_VERSION_base(4,11,0))
 import Data.Semigroup      (Semigroup(..))
@@ -96,10 +88,8 @@ instance Functor m => Profunctor (MooreT m) where
   {-# INLINE rmap #-}
   lmap f = let go = MooreT . fmap (\(b, m') -> (b, go . m' . f)) . runMooreT in go
   {-# INLINE lmap #-}
-#if MIN_VERSION_profunctors(3,1,1)
   dimap f g = let go = MooreT . fmap (\(b, m') -> (g b, go . m' . f)) . runMooreT in go
   {-# INLINE dimap #-}
-#endif
 
 instance Applicative m => Applicative (MooreT m a) where
   pure x = let r = MooreT $ pure (x, const r) in r

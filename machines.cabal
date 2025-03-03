@@ -17,11 +17,7 @@ description:
   Rúnar Bjarnason's talk on machines can be downloaded from:
   <http://web.archive.org/web/20161029161813/https://dl.dropboxusercontent.com/u/4588997/Machines.pdf>
 build-type:    Simple
-tested-with:   GHC == 7.4.2
-             , GHC == 7.6.3
-             , GHC == 7.8.4
-             , GHC == 7.10.3
-             , GHC == 8.0.2
+tested-with:   GHC == 8.0.2
              , GHC == 8.2.2
              , GHC == 8.4.4
              , GHC == 8.6.5
@@ -29,8 +25,11 @@ tested-with:   GHC == 7.4.2
              , GHC == 8.10.7
              , GHC == 9.0.2
              , GHC == 9.2.8
-             , GHC == 9.4.5
-             , GHC == 9.6.2
+             , GHC == 9.4.8
+             , GHC == 9.6.6
+             , GHC == 9.8.4
+             , GHC == 9.10.1
+             , GHC == 9.12.1
 extra-source-files:
   .gitignore
   .vim.custom
@@ -48,17 +47,17 @@ source-repository head
 library
   build-depends:
     adjunctions  >= 4.2   && < 5,
-    base         >= 4.5   && < 5,
+    base         >= 4.9   && < 5,
     comonad      >= 3     && < 6,
     containers   >= 0.3   && < 0.9,
     distributive             < 0.7,
     pointed      >= 3     && < 6,
-    profunctors  >= 3     && < 6,
+    profunctors  >= 4     && < 6,
     semigroupoids >= 5    && < 7,
     semigroups   >= 0.8.3 && < 1,
     transformers >= 0.3   && < 0.7,
     transformers-compat >= 0.3,
-    mtl          >= 2     && < 2.4,
+    mtl          >= 2.2   && < 2.4,
     void         >= 0.6.1 && < 1
 
   exposed-modules:
@@ -90,15 +89,12 @@ library
     Rank2Types
     UndecidableInstances
 
-  ghc-options: -Wall -fwarn-tabs -O2 -fdicts-cheap -funbox-strict-fields
+  ghc-options: -Wall -Wtabs -O2 -fdicts-cheap -funbox-strict-fields
 
   -- See https://ghc.haskell.org/trac/ghc/wiki/Migration/8.0#base-4.9.0.0
-  if impl(ghc >= 8.0)
-    ghc-options: -Wcompat -Wnoncanonical-monad-instances
-    if !impl(ghc >= 8.8)
-      ghc-options: -Wnoncanonical-monadfail-instances
-  else
-    build-depends: fail == 4.9.*
+  ghc-options: -Wcompat -Wnoncanonical-monad-instances
+  if !impl(ghc >= 8.8)
+    ghc-options: -Wnoncanonical-monadfail-instances
 
   hs-source-dirs: src
 

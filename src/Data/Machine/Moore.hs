@@ -2,9 +2,6 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-#ifndef MIN_VERSION_profunctors
-#define MIN_VERSION_profunctors(x,y,z) 0
-#endif
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Moore
@@ -77,11 +74,9 @@ instance Profunctor Moore where
   lmap f = go where
     go (Moore b g) = Moore b (go . g . f)
   {-# INLINE lmap #-}
-#if MIN_VERSION_profunctors(3,1,1)
   dimap f g = go where
     go (Moore b h) = Moore (g b) (go . h . f)
   {-# INLINE dimap #-}
-#endif
 
 instance Applicative (Moore a) where
   pure a = r where r = Moore a (const r)

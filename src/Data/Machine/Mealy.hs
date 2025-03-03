@@ -2,9 +2,6 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-#ifndef MIN_VERSION_profunctors
-#define MIN_VERSION_profunctors(x,y,z) 0
-#endif
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Mealy
@@ -97,12 +94,10 @@ instance Profunctor Mealy where
     go (Mealy m) = Mealy $ \a -> case m (f a) of
       (b, n) -> (b, go n)
   {-# INLINE lmap #-}
-#if MIN_VERSION_profunctors(3,1,1)
   dimap f g = go where
     go (Mealy m) = Mealy $ \a -> case m (f a) of
       (b, n) -> (g b, go n)
   {-# INLINE dimap #-}
-#endif
 
 instance Automaton Mealy where
   auto x = construct $ go x where
@@ -144,14 +139,12 @@ instance ArrowChoice Mealy where
     Right b -> case runMealy n b of
       (d, n') -> (d, m ||| n')
 
-#if MIN_VERSION_profunctors(3,2,0)
 instance Strong Mealy where
   first' = first
 
 instance Choice Mealy where
   left' = left
   right' = right
-#endif
 
 -- | Fast forward a mealy machine forward
 driveMealy :: Mealy a b -> Seq a -> a -> (b, Mealy a b)

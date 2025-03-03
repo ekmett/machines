@@ -3,9 +3,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
-#ifndef MIN_VERSION_mtl
-#define MIN_VERSION_mtl(x,y,z) 0
-#endif
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Machine.Plan
@@ -144,22 +141,16 @@ instance MonadState s m => MonadState s (PlanT k o m) where
   {-# INLINE get #-}
   put = lift . put
   {-# INLINE put #-}
-#if MIN_VERSION_mtl(2,1,0)
   state f = PlanT $ \kp _ _ _ -> state f >>= kp
   {-# INLINE state #-}
-#endif
 
 instance MonadReader e m => MonadReader e (PlanT k o m) where
   ask = lift ask
-#if MIN_VERSION_mtl(2,1,0)
   reader = lift . reader
-#endif
   local f m = PlanT $ \kp ke kr kf -> local f (runPlanT m kp ke kr kf)
 
 instance MonadWriter w m  => MonadWriter w (PlanT k o m) where
-#if MIN_VERSION_mtl(2,1,0)
   writer = lift . writer
-#endif
   tell   = lift . tell
 
   listen m = PlanT $ \kp ke kr kf -> runPlanT m ((kp =<<) . listen . return) ke kr kf

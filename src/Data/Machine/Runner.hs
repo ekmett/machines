@@ -1,8 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
-#ifndef MIN_VERSION_base
-#define MIN_VERSION_base(x,y,z) 0
-#endif
 module Data.Machine.Runner
     ( foldrT
     , foldlT
@@ -16,9 +12,6 @@ module Data.Machine.Runner
 
 import Data.Machine.Type
 import Control.Monad (liftM)
-#if !MIN_VERSION_base (4,8,0)
-import Data.Monoid (Monoid (..))
-#endif
 
 -- | Right fold over a stream. This will be lazy if the underlying
 -- monad is.
