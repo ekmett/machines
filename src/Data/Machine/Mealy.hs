@@ -23,6 +23,7 @@ module Data.Machine.Mealy
 import Control.Applicative
 import Control.Arrow
 import Control.Category
+import Control.Monad.Trans.State.Strict (state, runState)
 import Data.Distributive
 import Data.Functor.Extend
 import Data.Functor.Rep as Functor
@@ -34,6 +35,9 @@ import Data.Profunctor.Closed
 import Data.Profunctor
 import Data.Profunctor.Sieve
 import Data.Profunctor.Rep as Profunctor
+#if MIN_VERSION_profunctors(5,2,0)
+import Data.Profunctor.Traversing
+#endif
 import Data.Pointed
 import Data.Semigroup
 import Data.Sequence as Seq
@@ -145,6 +149,14 @@ instance Strong Mealy where
 instance Choice Mealy where
   left' = left
   right' = right
+
+#if MIN_VERSION_profunctors(5,2,0)
+instance Traversing Mealy where
+  wander tr = go where
+    go m = Mealy $ \s -> fmap go $ runState (tr (\a -> state $ \n -> runMealy n a) s) m
+    {-# INLINE go #-}
+  {-# INLINE wander #-}
+#endif
 
 -- | Fast forward a mealy machine forward
 driveMealy :: Mealy a b -> Seq a -> a -> (b, Mealy a b)
